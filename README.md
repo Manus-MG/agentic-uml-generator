@@ -44,28 +44,28 @@ Built with a **Canonical Software Model (CSM)** approach, deterministic projecto
 
 ```mermaid
 flowchart TD
-    User([User / Client UI]) -->|1. Prompt + Diagram Types| API[Express API / SSE Stream]
-    API --> Pipeline[Agentic Pipeline]
+    User(["User / Client UI"]) -->|1. Prompt + Diagram Types| API["Express API / SSE Stream"]
+    API --> Pipeline["Agentic Pipeline"]
     
     subgraph Agentic Pipeline
-        Pipeline --> CSM[CSM Extraction Node]
-        CSM -->|Groq LLM / Structured Output| CSM_Model[(Canonical Software Model)]
-        CSM_Model --> Integrity[CSM Integrity Validator]
-        Integrity --> Projectors[Deterministic UML Projectors]
-        Projectors --> PlantUML_Code[PlantUML Code Generation]
-        PlantUML_Code --> Compiler[PlantUML Compiler Engine]
-        Compiler -->|Syntax Error Detected| SelfRepair[Self-Healing Repair Loop]
-        SelfRepair -->|Fixed AST/Code| Compiler
-        Compiler -->|Success| DiagramAssets[Rendered SVG / PNG Images]
+        Pipeline --> CSM["CSM Extraction Node"]
+        CSM -->|"Groq LLM (Structured Output)"| CSM_Model[("Canonical Software Model")]
+        CSM_Model --> Integrity["CSM Integrity Validator"]
+        Integrity --> Projectors["Deterministic UML Projectors"]
+        Projectors --> PlantUML_Code["PlantUML Code Generation"]
+        PlantUML_Code --> Compiler["PlantUML Compiler Engine"]
+        Compiler -->|Syntax Error Detected| SelfRepair["Self-Healing Repair Loop"]
+        SelfRepair -->|"Fixed AST / Code"| Compiler
+        Compiler -->|Success| DiagramAssets["Rendered SVG / PNG Images"]
     end
 
-    DiagramAssets --> DB[(MongoDB Atlas)]
+    DiagramAssets --> DB[("MongoDB Atlas")]
     DiagramAssets --> User
     
-    User -->|2. User Feedback / Rating| FeedbackController[Feedback Service]
-    FeedbackController --> TrajectoryStore[(Trajectory & RL Store)]
-    TrajectoryStore --> ExportRL[/api/feedback/export JSONL]
-    ExportRL --> ART[LangChain ART / RLHF / DPO Trainer]
+    User -->|"2. User Feedback / Rating"| FeedbackController["Feedback Service"]
+    FeedbackController --> TrajectoryStore[("Trajectory & RL Store")]
+    TrajectoryStore --> ExportRL["Feedback Dataset Export (JSONL)"]
+    ExportRL --> ART["LangChain ART / RLHF / DPO Trainer"]
 ```
 
 ---
