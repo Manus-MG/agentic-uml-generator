@@ -58,7 +58,7 @@ export function createApp(): Application {
   app.use('/api/feedback', feedbackRoutes);
   app.get('/api/diagram/:session/:filename', serveDiagram);
 
-  // Kept at its original path: the client already calls this one.
+  // Returns metadata for all supported UML diagram types.
   app.get('/api/diagram-types', getDiagramTypes);
 
   app.get('/', (_req: Request, res: Response) => {
@@ -70,12 +70,14 @@ export function createApp(): Application {
         'GET  /api/diagram-types',
         'POST /api/diagrams/generate/:sessionId',
         'POST /api/diagrams/switch-view/:sessionId',
-        'GET  /api/diagrams/:sessionId',
+        'GET  /api/diagrams/:sessionId?version=N',
+        'GET  /api/sessions',
         'GET  /api/sessions/:sessionId',
         'GET  /api/sessions/:sessionId/model',
         'DELETE /api/sessions/:sessionId',
         'GET  /api/diagram/:session/:filename',
         'POST /api/feedback',
+        'GET  /api/feedback?sessionId=...',
         'GET  /api/feedback/export',
       ],
     });

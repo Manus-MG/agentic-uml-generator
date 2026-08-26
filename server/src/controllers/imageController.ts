@@ -7,10 +7,8 @@ import { badRequest, notFound } from '../lib/httpError.js';
 /**
  * Serves a rendered PNG.
  *
- * Both path segments are resolved and then checked to still be inside the
- * output root. The Python original passed the caller's filename straight to
- * `os.path.join`, which happily walks out of the directory — `../../.env` was a
- * readable file over HTTP. That behaviour is not carried over.
+ * Both path segments are resolved and verified to remain strictly within the
+ * output root directory, preventing directory traversal attempts.
  */
 export function serveDiagram(req: Request, res: Response): void {
   const { session, filename } = req.params as { session: string; filename: string };

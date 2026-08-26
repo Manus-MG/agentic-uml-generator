@@ -5,11 +5,7 @@ import { Thread } from '../models/Thread.js';
 import { notFound } from '../lib/httpError.js';
 
 /**
- * The conversation so far: every prompt, and what each turn produced.
- *
- * Replaces the Python `/session-history` endpoint, which returned an
- * undifferentiated list of request and response entries the caller had to
- * re-pair by index.
+ * Retrieves the full session history, including turn details and diagram versions.
  */
 export async function getSession(req: Request, res: Response): Promise<void> {
   const { sessionId } = req.params as { sessionId: string };
@@ -90,5 +86,33 @@ export async function getCanonicalModel(req: Request, res: Response): Promise<vo
     rationale: stored.rationale,
     integrity: stored.integrity,
     csm: stored.csm,
+  });
+}
+
+/**
+ * The sessions this backend still holds, newest first.
+ *
+ * `Thread` carries a 24h TTL index, so an expired session simply is not
+ * returned — which is why the client cannot build this list from its own
+ * localStorage: it would keep offering rows whose data is already gone.
+ */
+export async function listSessions(_req: Request, res: Response): Promise<void> {
+  const threads = await Thread.find().sort({ updatedAt: -1 }).limit(50);
+
+  res.status(200).json({
+    success: true,
+    total: threads.length,
+    sessions: threads.map((thread) => ({
+      sessionId: thread.sessionId,
+      // `brief` is the first prompt and is never overwritten, so it stays a
+      // stable label for the session even after several revisions.
+      title: thread.brief.length > 80 ? `${thread.brief.slice(0, 80).trimEnd()}…` : thread.brief,
+      currentVersion: thread.currentVersion,
+      diagramTypes: thread.diagramTypes,
+      turnCount: thread.turns.length,
+      createdAt: thread.createdAt,
+      updatedAt: thread.updatedAt,
+      expiresAt: thread.expiresAt,
+    })),
   });
 }

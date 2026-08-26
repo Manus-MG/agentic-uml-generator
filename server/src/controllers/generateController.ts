@@ -106,19 +106,27 @@ export async function switchView(req: Request, res: Response): Promise<void> {
   res.status(200).json({ success: true, sessionId, ...result });
 }
 
-/** The latest rendered set for a session. */
+/**
+ * The rendered set for a session — the latest version, or `?version=N`.
+ *
+ * The explicit version is what lets a chat transcript rehydrate the diagrams a
+ * *past* turn produced instead of showing every turn the current ones.
+ */
 export async function listDiagrams(req: Request, res: Response): Promise<void> {
   const { sessionId } = req.params as { sessionId: string };
 
   const thread = await Thread.findOne({ sessionId });
   if (!thread) throw notFound(`No session ${sessionId}`);
 
-  const diagrams = await Diagram.find({ sessionId, version: thread.currentVersion }).sort({ type: 1 });
+  const requested = Number(req.query.version);
+  const version = Number.isInteger(requested) && requested > 0 ? requested : thread.currentVersion;
+
+  const diagrams = await Diagram.find({ sessionId, version }).sort({ type: 1 });
 
   res.status(200).json({
     success: true,
     sessionId,
-    version: thread.currentVersion,
+    version,
     total: diagrams.length,
     diagrams: diagrams.map((d) => ({
       diagramId: String(d._id),

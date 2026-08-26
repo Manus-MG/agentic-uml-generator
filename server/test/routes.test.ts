@@ -214,6 +214,34 @@ describe.skipIf(!hasMongo)('API routes', () => {
     expect(body.diagrams.length).toBeGreaterThanOrEqual(3);
   });
 
+  it('lists a past version when one is asked for', async () => {
+    const res = await get(`/api/diagrams/${SESSION}?version=1`);
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.version).toBe(1);
+    expect(body.diagrams.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('falls back to the current version when the query is nonsense', async () => {
+    const body = await (await get(`/api/diagrams/${SESSION}?version=banana`)).json();
+    expect(body.version).toBe(2);
+  });
+
+  it('lists the sessions it still holds', async () => {
+    const res = await get('/api/sessions');
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    const found = body.sessions.find((s: { sessionId: string }) => s.sessionId === SESSION);
+    expect(found).toBeDefined();
+    expect(found.currentVersion).toBe(2);
+    expect(found.turnCount).toBe(2);
+    // The title is the first prompt, not the revision that followed it.
+    expect(BRIEF.startsWith(found.title.replace(/…$/, ''))).toBe(true);
+  });
+
   it('returns the session history', async () => {
     const res = await get(`/api/sessions/${SESSION}`);
     expect(res.status).toBe(200);
@@ -254,6 +282,20 @@ describe.skipIf(!hasMongo)('API routes', () => {
     expect(first.reward).toBe(1);
     expect(first.metadata.sessionId).toBe(SESSION);
     expect(first.metadata.step).toBeTruthy();
+  });
+
+  it('reads back the ratings a session already has', async () => {
+    const res = await get(`/api/feedback?sessionId=${SESSION}`);
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.total).toBeGreaterThan(0);
+    expect(body.feedback[0].diagramId).toBe(diagramId);
+    expect(body.feedback[0].rating).toBe('up');
+  });
+
+  it('refuses a feedback listing with no session', async () => {
+    expect((await get('/api/feedback')).status).toBe(400);
   });
 
   it('rejects feedback on a diagram that is not in the session', async () => {

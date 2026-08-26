@@ -5,7 +5,7 @@ import { Feedback } from '../models/Feedback.js';
 import { Trajectory } from '../models/Trajectory.js';
 import { badRequest, notFound } from '../lib/httpError.js';
 
-/** `thumbs_up`/`thumbs_down` are the Python spellings; both are accepted. */
+/** Supports both short ('up'/'down') and descriptive ('thumbs_up'/'thumbs_down') rating values. */
 const FeedbackBody = z
   .object({
     sessionId: z.string().min(1).optional(),
@@ -27,6 +27,36 @@ const FeedbackBody = z
       comments: body.comments ?? null,
     };
   });
+
+/**
+ * The ratings already given in a session.
+ *
+ * Without this a reload silently forgets what the user rated, and they are
+ * invited to rate the same diagram twice — which the unique index would then
+ * quietly overwrite rather than reject.
+ */
+export async function listFeedback(req: Request, res: Response): Promise<void> {
+  const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : null;
+  if (!sessionId) throw badRequest('sessionId is required');
+
+  const feedback = await Feedback.find({ sessionId }).sort({ updatedAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    sessionId,
+    total: feedback.length,
+    feedback: feedback.map((entry) => ({
+      feedbackId: String(entry._id),
+      diagramId: String(entry.diagramId),
+      diagramType: entry.diagramType,
+      version: entry.version,
+      rating: entry.rating,
+      reward: entry.reward,
+      comments: entry.comments,
+      at: entry.updatedAt,
+    })),
+  });
+}
 
 /**
  * Records a rating against one diagram.
