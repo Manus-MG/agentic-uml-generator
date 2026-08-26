@@ -51,7 +51,7 @@ function emptyTurn(prompt: string, requestedTypes: string[]): Turn {
  * decides that on its own — the client sends the same request either way and
  * reads `done.mode` to label what happened.
  */
-export function useChat(sessionId: string | null) {
+export function useChat(sessionId: string | null, userId?: string | null) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -130,7 +130,11 @@ export function useChat(sessionId: string | null) {
       abortRef.current = controller;
 
       try {
-        const body = diagramTypes.length > 0 ? { prompt, diagram_types: diagramTypes } : { prompt };
+        const body = {
+          prompt,
+          ...(diagramTypes.length > 0 ? { diagram_types: diagramTypes } : {}),
+          ...(userId ? { userId } : {}),
+        };
 
         for await (const event of api.streamGenerate(sessionId, body, controller.signal)) {
           switch (event.type) {
@@ -199,7 +203,7 @@ export function useChat(sessionId: string | null) {
         setBusy(false);
       }
     },
-    [sessionId, busy, patchTurn],
+    [sessionId, userId, busy, patchTurn],
   );
 
   const stop = useCallback(() => {

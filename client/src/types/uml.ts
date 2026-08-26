@@ -163,10 +163,32 @@ export interface ListDiagramsResponse {
   diagrams: DiagramPayload[];
 }
 
+/* -------------------------------------------------------------------- users */
+
+export interface UserProfile {
+  userId: string;
+  name: string;
+  createdAt?: string;
+}
+
+export interface UserIdentifyResponse {
+  success: boolean;
+  isNewUser: boolean;
+  user: UserProfile;
+  message: string;
+}
+
+export interface UserListResponse {
+  success: boolean;
+  total: number;
+  users: UserProfile[];
+}
+
 /* ----------------------------------------------------------------- sessions */
 
 export interface SessionSummary {
   sessionId: string;
+  userId?: string;
   title: string;
   currentVersion: number;
   diagramTypes: string[];
@@ -179,6 +201,7 @@ export interface SessionSummary {
 export interface SessionListResponse {
   success: boolean;
   total: number;
+  userId?: string;
   sessions: SessionSummary[];
 }
 

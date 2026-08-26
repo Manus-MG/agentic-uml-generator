@@ -25,6 +25,7 @@ export async function getSession(req: Request, res: Response): Promise<void> {
   res.status(200).json({
     success: true,
     sessionId,
+    userId: thread.userId,
     brief: thread.brief,
     diagramTypes: thread.diagramTypes,
     currentVersion: thread.currentVersion,
@@ -90,20 +91,30 @@ export async function getCanonicalModel(req: Request, res: Response): Promise<vo
 }
 
 /**
- * The sessions this backend still holds, newest first.
+ * The sessions this backend still holds, filtered by userId if provided, newest first.
  *
  * `Thread` carries a 24h TTL index, so an expired session simply is not
  * returned — which is why the client cannot build this list from its own
  * localStorage: it would keep offering rows whose data is already gone.
  */
-export async function listSessions(_req: Request, res: Response): Promise<void> {
-  const threads = await Thread.find().sort({ updatedAt: -1 }).limit(50);
+export async function listSessions(req: Request, res: Response): Promise<void> {
+  const userId =
+    typeof req.query.userId === 'string' && req.query.userId.trim().length > 0
+      ? req.query.userId.trim()
+      : typeof req.headers['x-user-id'] === 'string' && req.headers['x-user-id'].trim().length > 0
+      ? req.headers['x-user-id'].trim()
+      : null;
+
+  const filter = userId ? { userId } : {};
+  const threads = await Thread.find(filter).sort({ updatedAt: -1 }).limit(50);
 
   res.status(200).json({
     success: true,
     total: threads.length,
+    userId: userId ?? undefined,
     sessions: threads.map((thread) => ({
       sessionId: thread.sessionId,
+      userId: thread.userId,
       // `brief` is the first prompt and is never overwritten, so it stays a
       // stable label for the session even after several revisions.
       title: thread.brief.length > 80 ? `${thread.brief.slice(0, 80).trimEnd()}…` : thread.brief,

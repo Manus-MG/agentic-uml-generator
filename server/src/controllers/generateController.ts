@@ -16,10 +16,13 @@ const GenerateBody = z
     prompt: z.string().min(1, 'prompt is required'),
     diagram_types: z.array(z.string()).optional(),
     diagramTypes: z.array(z.string()).optional(),
+    user_id: z.string().optional(),
+    userId: z.string().optional(),
   })
   .transform((body) => ({
     prompt: body.prompt,
     diagramTypes: body.diagram_types ?? body.diagramTypes,
+    userId: body.user_id ?? body.userId,
   }));
 
 const SwitchViewBody = z
@@ -55,11 +58,13 @@ function parse<T>(schema: z.ZodType<T>, body: unknown): T {
 export async function generate(req: Request, res: Response): Promise<void> {
   const { sessionId } = req.params as { sessionId: string };
   const body = parse(GenerateBody, req.body);
+  const headerUserId = typeof req.headers['x-user-id'] === 'string' ? req.headers['x-user-id'].trim() : undefined;
+  const userId = body.userId || headerUserId;
 
   if (wantsSse(req.headers.accept)) {
     const stream = new SseStream(res);
     try {
-      for await (const event of runTurn({ sessionId, ...body })) {
+      for await (const event of runTurn({ sessionId, ...body, userId })) {
         if (!stream.isOpen) return; // client hung up; stop doing work for nobody
         stream.send(event.type, event);
       }
@@ -76,7 +81,7 @@ export async function generate(req: Request, res: Response): Promise<void> {
   let done: (RunEvent & { type: 'done' }) | null = null;
   let failed: (RunEvent & { type: 'error' }) | null = null;
 
-  for await (const event of runTurn({ sessionId, ...body })) {
+  for await (const event of runTurn({ sessionId, ...body, userId })) {
     if (event.type === 'diagram') diagrams.set(event.diagram.type, event);
     else if (event.type === 'done') done = event;
     else if (event.type === 'error') failed = event;

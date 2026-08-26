@@ -17,7 +17,7 @@ export function newSessionId(): string {
  * localStorage. Only the *active* id is remembered locally, so a reload returns
  * to the chat you were in.
  */
-export function useSessions() {
+export function useSessions(userId?: string | null) {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(() => {
     try {
@@ -30,7 +30,7 @@ export function useSessions() {
 
   const refresh = useCallback(async () => {
     try {
-      const data = await api.listSessions();
+      const data = await api.listSessions(userId ?? undefined);
       setSessions(data.sessions);
       return data.sessions;
     } catch {
@@ -39,7 +39,7 @@ export function useSessions() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     void refresh();

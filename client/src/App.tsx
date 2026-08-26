@@ -2,26 +2,32 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   SidebarSimple,
   SquaresFour,
+  UserSwitch,
   WarningCircle,
 } from '@phosphor-icons/react';
 import { ChatPanel } from './components/ChatPanel';
 import { Composer } from './components/Composer';
 import { DiagramPane } from './components/DiagramPane';
 import { SessionSidebar } from './components/SessionSidebar';
+import { UserModal } from './components/UserModal';
 import { useChat } from './hooks/useChat';
 import { useDiagramTypes } from './hooks/useDiagramTypes';
 import { useFeedback } from './hooks/useFeedback';
 import { useHealth } from './hooks/useHealth';
 import { useSessions } from './hooks/useSessions';
+import { useUser } from './hooks/useUser';
 import { api } from './services/api';
+import type { UserProfile } from './types/uml';
 
 export function App() {
-  const { sessions, activeId, setActiveId, startNew, remove, refresh } = useSessions();
+  const { user, knownUsers, identify, selectUser } = useUser();
+  const { sessions, activeId, setActiveId, startNew, remove, refresh } = useSessions(user?.userId);
   const { catalogue, displayName } = useDiagramTypes();
   const { health, status } = useHealth();
-  const { turns, busy, send, stop, addView } = useChat(activeId);
+  const { turns, busy, send, stop, addView } = useChat(activeId, user?.userId);
   const { known: knownRatings, record: recordRating } = useFeedback(activeId);
 
+  const [userModalOpen, setUserModalOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['sequence', 'component', 'class']);
   const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<string | null>(null);
@@ -30,6 +36,9 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [diagramPaneOpen, setDiagramPaneOpen] = useState(true);
+
+  // If no user is identified yet, show identification modal immediately
+  const isModalVisible = userModalOpen || !user;
 
   const activeTurn = useMemo(
     () => turns.find((turn) => turn.id === activeTurnId) ?? turns[turns.length - 1] ?? null,
@@ -128,8 +137,57 @@ export function App() {
     [remove],
   );
 
+  const handleIdentify = useCallback(
+    async (name: string) => {
+      const res = await identify(name);
+      setUserModalOpen(false);
+      const userSessions = await refresh();
+      if (!res.isNewUser && userSessions && userSessions.length > 0) {
+        setActiveId(userSessions[0].sessionId);
+      } else {
+        startNew();
+      }
+      setActiveTurnId(null);
+      setActiveType(null);
+      setLastSwitchCost(null);
+    },
+    [identify, refresh, setActiveId, startNew],
+  );
+
+  const handleSelectUser = useCallback(
+    async (selected: UserProfile) => {
+      selectUser(selected);
+      setUserModalOpen(false);
+      try {
+        const userSessions = await api.listSessions(selected.userId);
+        if (userSessions.sessions.length > 0) {
+          setActiveId(userSessions.sessions[0].sessionId);
+        } else {
+          startNew();
+        }
+      } catch {
+        startNew();
+      }
+      setActiveTurnId(null);
+      setActiveType(null);
+      setLastSwitchCost(null);
+    },
+    [selectUser, setActiveId, startNew],
+  );
+
   return (
     <div className="flex h-full bg-bg-primary text-text-primary">
+      {/* User Identification / Switch Modal */}
+      <UserModal
+        isOpen={isModalVisible}
+        currentUser={user}
+        knownUsers={knownUsers}
+        onIdentify={handleIdentify}
+        onSelectUser={handleSelectUser}
+        onClose={() => setUserModalOpen(false)}
+        canDismiss={!!user}
+      />
+
       {/* Collapsible Left Sidebar */}
       {sidebarOpen && (
         <SessionSidebar
@@ -146,6 +204,8 @@ export function App() {
           health={health}
           status={status}
           exportUrl={api.getFeedbackExportUrl(activeId ?? undefined)}
+          currentUser={user}
+          onOpenUserModal={() => setUserModalOpen(true)}
         />
       )}
 
@@ -185,6 +245,23 @@ export function App() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* User Profile Pill in Header */}
+            {user && (
+              <button
+                type="button"
+                onClick={() => setUserModalOpen(true)}
+                title="Click to Switch User"
+                className="flex items-center gap-1.5 rounded-full border border-line bg-bg-primary px-2.5 py-1 text-[11px] text-text-secondary hover:border-accent-indigo/50 hover:text-text-primary transition"
+              >
+                <div className="flex size-4 items-center justify-center rounded-full bg-accent-indigo text-[9px] font-bold text-white">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="font-semibold text-text-primary">{user.name}</span>
+                <span className="text-[10px] font-mono text-text-muted">({user.userId})</span>
+                <UserSwitch size={12} className="text-text-muted ml-0.5" />
+              </button>
+            )}
+
             <div className="hidden items-center gap-1.5 rounded-full border border-line bg-bg-primary px-2.5 py-1 text-[11px] text-text-muted sm:flex">
               <span className="size-1.5 rounded-full bg-accent-emerald" />
               <span>Groq LLM + PlantUML</span>

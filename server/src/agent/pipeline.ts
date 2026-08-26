@@ -103,6 +103,7 @@ export interface TurnInput {
   prompt: string;
   /** Absent on a revision means "the diagram types this thread already uses". */
   diagramTypes?: string[];
+  userId?: string;
 }
 
 /** Fallback for a first turn that names no diagram types. */
@@ -590,10 +591,17 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<RunEvent, void>
     yield* renderDiagram(pipeline, csm, spec, { sessionId, version, name });
   }
 
+  const userId = input.userId || 'anonymous';
   await Thread.findOneAndUpdate(
     { sessionId },
     {
-      $set: { brief, diagramTypes: resolved, currentVersion: version, expiresAt },
+      $set: {
+        brief,
+        diagramTypes: resolved,
+        currentVersion: version,
+        expiresAt,
+        userId,
+      },
       $setOnInsert: { sessionId },
       $push: {
         turns: { version, prompt: input.prompt, kind: mode, diagramTypes: resolved, at: new Date() },

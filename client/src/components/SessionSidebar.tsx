@@ -8,10 +8,12 @@ import {
   PlusCircle,
   Stack,
   Trash,
+  UserCircle,
+  UserSwitch,
   X,
 } from '@phosphor-icons/react';
 import type { HealthStatus } from '../hooks/useHealth';
-import type { BackendHealthResponse, SessionSummary } from '../types/uml';
+import type { BackendHealthResponse, SessionSummary, UserProfile } from '../types/uml';
 
 function relative(iso: string): string {
   const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -38,6 +40,8 @@ export function SessionSidebar({
   health,
   status,
   exportUrl,
+  currentUser,
+  onOpenUserModal,
 }: {
   sessions: SessionSummary[];
   activeId: string | null;
@@ -47,6 +51,8 @@ export function SessionSidebar({
   health: BackendHealthResponse | null;
   status: HealthStatus;
   exportUrl: string;
+  currentUser: UserProfile | null;
+  onOpenUserModal: () => void;
 }) {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -63,12 +69,41 @@ export function SessionSidebar({
 
   return (
     <aside className="flex h-full w-72 shrink-0 flex-col border-r border-line bg-bg-secondary">
+      {/* Active User Card & Switch Action */}
+      <div className="border-b border-line p-3 bg-bg-primary/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-indigo/20 text-accent-indigo font-bold text-xs border border-accent-indigo/30">
+              {currentUser ? currentUser.name.charAt(0).toUpperCase() : <UserCircle size={16} />}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold text-text-primary">
+                {currentUser ? currentUser.name : 'Guest / No User'}
+              </p>
+              <p className="truncate text-[10px] font-mono text-text-muted">
+                {currentUser?.userId ?? 'Anonymous'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenUserModal}
+            title="Switch or Change User"
+            className="flex items-center gap-1 rounded-lg border border-line bg-bg-secondary px-2 py-1 text-[11px] font-medium text-text-secondary transition hover:border-line-hover hover:text-text-primary hover:bg-bg-tertiary"
+          >
+            <UserSwitch size={13} className="text-accent-indigo" />
+            <span>Switch</span>
+          </button>
+        </div>
+      </div>
+
       {/* Top New Chat Action */}
       <div className="border-b border-line p-3 space-y-2">
         <button
           type="button"
           onClick={onNew}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-indigo px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-accent-indigo-hover active:translate-y-px"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-indigo px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-accent-indigo-hover active:translate-y-px shadow-sm"
         >
           <PlusCircle size={16} weight="bold" />
           <span>New Architecture Session</span>
@@ -101,7 +136,7 @@ export function SessionSidebar({
       {/* Session List */}
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         <div className="flex items-center justify-between px-2 pb-1.5 text-[11px] font-semibold tracking-wider text-text-muted uppercase">
-          <span>Sessions</span>
+          <span>{currentUser ? `${currentUser.name}'s Sessions` : 'Sessions'}</span>
           <span className="font-mono text-[10px]">{filteredSessions.length}</span>
         </div>
 

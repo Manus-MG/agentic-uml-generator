@@ -12,6 +12,9 @@ import type {
   SessionListResponse,
   SessionResponse,
   SwitchViewResponse,
+  UserIdentifyResponse,
+  UserListResponse,
+  UserProfile,
 } from '../types/uml';
 import { streamRun } from './sse';
 
@@ -39,9 +42,9 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-const postInit = (body: unknown): RequestInit => ({
+const postInit = (body: unknown, headers: Record<string, string> = {}): RequestInit => ({
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'application/json', ...headers },
   body: JSON.stringify(body),
 });
 
@@ -56,6 +59,21 @@ export const api = {
   async checkHealth(): Promise<BackendHealthResponse> {
     const response = await fetch(`${API_BASE_URL}/health`);
     return (await response.json()) as BackendHealthResponse;
+  },
+
+  /** User identification / login by name */
+  identifyUser(name: string): Promise<UserIdentifyResponse> {
+    return json<UserIdentifyResponse>(`${API_BASE_URL}/users/identify`, postInit({ name }));
+  },
+
+  /** Lists known users in the system */
+  listUsers(): Promise<UserListResponse> {
+    return json<UserListResponse>(`${API_BASE_URL}/users`);
+  },
+
+  /** Gets user profile by userId */
+  getUser(userId: string): Promise<{ success: boolean; user: UserProfile }> {
+    return json<{ success: boolean; user: UserProfile }>(`${API_BASE_URL}/users/${encodeURIComponent(userId)}`);
   },
 
   /** The 14 diagram types, grouped, with the display names the payloads lack. */
@@ -76,7 +94,7 @@ export const api = {
    */
   streamGenerate(
     sessionId: string,
-    payload: { prompt: string; diagram_types?: string[] },
+    payload: { prompt: string; diagram_types?: string[]; userId?: string },
     signal?: AbortSignal,
   ): AsyncGenerator<RunEvent> {
     return streamRun(
@@ -89,7 +107,7 @@ export const api = {
   /** The blocking form of the same turn, kept for non-streaming callers. */
   generateDiagrams(
     sessionId: string,
-    payload: { prompt: string; diagram_types?: string[] },
+    payload: { prompt: string; diagram_types?: string[]; userId?: string },
   ): Promise<GenerateResponse> {
     return json<GenerateResponse>(`${API_BASE_URL}/diagrams/generate/${encodeURIComponent(sessionId)}`, {
       ...postInit(payload),
@@ -118,9 +136,11 @@ export const api = {
     );
   },
 
-  /** Sessions the backend still holds. Expired ones are simply absent. */
-  listSessions(): Promise<SessionListResponse> {
-    return json<SessionListResponse>(`${API_BASE_URL}/sessions`);
+  /** Sessions the backend still holds for a specific user (or global). */
+  listSessions(userId?: string): Promise<SessionListResponse> {
+    const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    const headers = userId ? { 'x-user-id': userId } : undefined;
+    return json<SessionListResponse>(`${API_BASE_URL}/sessions${query}`, { headers });
   },
 
   /** One session's turns, for rehydrating a transcript. */

@@ -317,4 +317,67 @@ describe.skipIf(!hasMongo)('API routes', () => {
     const exported = await get(`/api/feedback/export?sessionId=${SESSION}`);
     expect((await exported.text()).trim().split('\n').filter(Boolean).length).toBeGreaterThan(0);
   });
+
+  describe('User Identification & Scoped Sessions', () => {
+    it('creates a new user when name does not exist', async () => {
+      const res = await post('/api/users/identify', { name: 'Tony' });
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.isNewUser).toBe(true);
+      expect(data.user.name).toBe('Tony');
+      expect(data.user.userId).toBe('usr_tony');
+    });
+
+    it('recognizes an existing user with case-insensitive name matching', async () => {
+      const res = await post('/api/users/identify', { name: 'tony' });
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.isNewUser).toBe(false);
+      expect(data.user.name).toBe('Tony');
+      expect(data.user.userId).toBe('usr_tony');
+    });
+
+    it('lists known users in the system', async () => {
+      const res = await get('/api/users');
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.total).toBeGreaterThanOrEqual(1);
+      expect(data.users.some((u: { userId: string }) => u.userId === 'usr_tony')).toBe(true);
+    });
+
+    it('filters sessions by userId', async () => {
+      const tonySession = 'tony-session-1';
+      const aliceSession = 'alice-session-1';
+
+      // Create a session for Tony
+      await post(`/api/diagrams/generate/${tonySession}`, {
+        prompt: 'Tony banking app design',
+        diagram_types: ['class'],
+        userId: 'usr_tony',
+      });
+
+      // Create a session for Alice
+      await post(`/api/diagrams/generate/${aliceSession}`, {
+        prompt: 'Alice e-commerce app design',
+        diagram_types: ['class'],
+        userId: 'usr_alice',
+      });
+
+      // Query Tony's sessions
+      const tonyRes = await get('/api/sessions?userId=usr_tony');
+      const tonyData = await tonyRes.json();
+      expect(tonyData.sessions.some((s: { sessionId: string }) => s.sessionId === tonySession)).toBe(true);
+      expect(tonyData.sessions.some((s: { sessionId: string }) => s.sessionId === aliceSession)).toBe(false);
+
+      // Query Alice's sessions
+      const aliceRes = await get('/api/sessions?userId=usr_alice');
+      const aliceData = await aliceRes.json();
+      expect(aliceData.sessions.some((s: { sessionId: string }) => s.sessionId === aliceSession)).toBe(true);
+      expect(aliceData.sessions.some((s: { sessionId: string }) => s.sessionId === tonySession)).toBe(false);
+    });
+  });
 });
+

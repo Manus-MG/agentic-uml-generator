@@ -10,6 +10,7 @@ import { getBackend } from './plantuml/index.js';
 import diagramRoutes from './routes/diagramRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 /**
  * Builds the Express app without connecting to anything or listening.
@@ -53,6 +54,7 @@ export function createApp(): Application {
     });
   });
 
+  app.use('/api/users', userRoutes);
   app.use('/api/diagrams', diagramRoutes);
   app.use('/api/sessions', sessionRoutes);
   app.use('/api/feedback', feedbackRoutes);
@@ -67,11 +69,14 @@ export function createApp(): Application {
       status: 'running',
       endpoints: [
         'GET  /api/health',
+        'POST /api/users/identify',
+        'GET  /api/users',
+        'GET  /api/users/:userId',
         'GET  /api/diagram-types',
         'POST /api/diagrams/generate/:sessionId',
         'POST /api/diagrams/switch-view/:sessionId',
         'GET  /api/diagrams/:sessionId?version=N',
-        'GET  /api/sessions',
+        'GET  /api/sessions?userId=...',
         'GET  /api/sessions/:sessionId',
         'GET  /api/sessions/:sessionId/model',
         'DELETE /api/sessions/:sessionId',

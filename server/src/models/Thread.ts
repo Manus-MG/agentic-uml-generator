@@ -24,6 +24,7 @@ const TurnSchema = new Schema(
 const ThreadSchema = new Schema(
   {
     sessionId: { type: String, required: true, unique: true, index: true },
+    userId: { type: String, default: 'anonymous', index: true },
     /** The original brief. Revisions are recorded as turns, not by overwriting this. */
     brief: { type: String, required: true },
     /** Canonical diagram ids requested so far; a revision with no types reuses these. */
@@ -37,6 +38,7 @@ const ThreadSchema = new Schema(
 
 // Working state is disposable; feedback and trajectories are not, and have no TTL.
 ThreadSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+ThreadSchema.index({ userId: 1, updatedAt: -1 });
 
 export type ThreadDoc = InferSchemaType<typeof ThreadSchema>;
 export const Thread = model('Thread', ThreadSchema);
