@@ -1,0 +1,577 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`projectors > activity > is stable 1`] = `
+"@startuml
+title Circular analysis pipeline
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+skinparam ActivityBackgroundColor #F4F7FB
+skinparam ActivityBorderColor #33475B
+
+|Ingestion|
+start
+:Fetch new circulars;
+:Parse into clause table;
+if (Parsed successfully?) then (yes)
+  |Analysis|
+  :Extract obligations;
+  fork
+    :Run gap analysis;
+  fork again
+    :Assess IT and operational impact;
+  end fork
+  :Compile findings report;
+  |Review|
+  :Officer signs off;
+  stop
+else (no)
+  :Quarantine for manual review;
+  stop
+endif
+
+@enduml
+"
+`;
+
+exports[`projectors > class > is stable 1`] = `
+"@startuml
+title SEBI Compliance Monitor — Domain Model
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+skinparam classAttributeIconSize 0
+hide empty members
+
+class "Circular" as circular {
+  +id : string
+  +reference : string
+  +publishedAt : date
+  +sourceUrl : string
+}
+class "Clause" as clause {
+  +number : string
+  +text : string
+}
+class "Obligation" as obligation {
+  +summary : string
+  +deadline : date
+  +applicability : string
+}
+class "Control" as control {
+  +name : string
+  +owner : string  [PII]
+}
+class "Gap" as gap {
+  +severity : string
+  +rationale : string
+}
+class "ImpactAssessment" as impact {
+  +itEffortDays : int
+  +opsEffortDays : int
+}
+
+circular "1" -- "*" clause : contains
+clause "1" -- "*" obligation : yields
+obligation "1" -- "*" gap : assessed by
+gap "1" -- "1" control : against
+impact "1" -- "1" obligation : for
+
+legend right
+  [PII] marks personally identifiable or regulated fields
+end legend
+
+@enduml
+"
+`;
+
+exports[`projectors > communication > is stable 1`] = `
+"@startuml
+title Nightly circular ingestion and analysis — Communication
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+
+actor "Nightly Scheduler" as nightly_scheduler
+participant "Circular Fetcher" as circular_fetcher
+actor "SEBI Portal" as sebi_portal
+participant "Ingestion Queue" as ingest_queue
+participant "Clause Parser" as clause_parser
+participant "Requirement Extractor" as requirement_extractor
+participant "Gap Analyser" as gap_analyser
+participant "Compliance Store" as compliance_db
+actor "Compliance Officer" as compliance_officer
+
+nightly_scheduler -> circular_fetcher : 1: run ingestion
+circular_fetcher -> sebi_portal : 2: GET /circulars?since=lastRun
+sebi_portal --> circular_fetcher : 3: circular list + PDFs
+circular_fetcher -> ingest_queue : 4: enqueue circular
+ingest_queue -> clause_parser : 5: deliver circular
+clause_parser -> compliance_db : 6: save clause table
+clause_parser -> requirement_extractor : 7: extract obligations
+requirement_extractor -> gap_analyser : 8: analyse gaps
+gap_analyser -> compliance_db : 9: save findings
+gap_analyser -> compliance_officer : 10: notify: findings ready for review
+
+@enduml
+"
+`;
+
+exports[`projectors > component > is stable 1`] = `
+"@startuml
+title SEBI Compliance Monitor — Components
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+left to right direction
+skinparam componentStyle rectangle
+skinparam nodesep 30
+skinparam ranksep 90
+skinparam packageStyle rectangle
+
+package "Ingestion" as pkg_ingest {
+  [Circular Fetcher] as circular_fetcher <<job>>
+  interface "ICircularSource" as ifetch
+  circular_fetcher -- ifetch
+  [Clause Parser] as clause_parser <<service>>
+  interface "IClauseTable" as iparse
+  clause_parser -- iparse
+}
+
+package "Analysis" as pkg_analysis {
+  [Requirement Extractor] as requirement_extractor <<service>>
+  interface "IObligations" as iextract
+  requirement_extractor -- iextract
+  [Gap Analyser] as gap_analyser <<service>>
+  interface "IGapAnalysis" as igap
+  gap_analyser -- igap
+  [Impact Assessor] as impact_assessor <<service>>
+  interface "IImpactAssessment" as iimpact
+  impact_assessor -- iimpact
+}
+
+package "Platform" as pkg_platform {
+  [Compliance Store] as compliance_db <<db>>
+  interface "IComplianceStore" as istore
+  compliance_db -- istore
+  [Review Console] as review_ui <<ui>>
+  [Ingestion Queue] as ingest_queue <<queue>>
+}
+
+[Control Library] as control_library <<external>>
+interface "IControlLibrary" as icontrols
+control_library -- icontrols
+
+clause_parser ..> ifetch : uses
+requirement_extractor ..> iparse : uses
+gap_analyser ..> iextract : uses
+gap_analyser ..> icontrols : uses
+impact_assessor ..> iextract : uses
+review_ui ..> igap : uses
+review_ui ..> iimpact : uses
+
+@enduml
+"
+`;
+
+exports[`projectors > composite-structure > is stable 1`] = `
+"@startuml
+title Clause Parser — Internal Structure
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+
+component "Clause Parser" as clause_parser {
+  portin "ICircularSource" as in_ifetch
+  portout "IClauseTable" as out_iparse
+  component "Segment circulars into clauses" as clause_parser_p0
+  component "Normalise clause numbering" as clause_parser_p1
+  component "Emit a clause table" as clause_parser_p2
+
+  in_ifetch --> clause_parser_p0
+  clause_parser_p0 --> clause_parser_p1
+  clause_parser_p1 --> clause_parser_p2
+  clause_parser_p2 --> out_iparse
+}
+
+@enduml
+"
+`;
+
+exports[`projectors > deployment > is stable 1`] = `
+"@startuml
+title SEBI Compliance Monitor — Deployment
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+
+node "ECS Fargate Cluster" as n_ecs <<production>> {
+  artifact "ingest-service.jar\\n(Circular Fetcher, Clause Parser)" as art_ingest
+  artifact "analysis-service.jar\\n(Requirement Extractor, Gap Analyser, Impact A…)" as art_analysis
+}
+cloud "MongoDB Atlas" as n_atlas <<ap-south-1>> {
+  artifact "compliance-db\\n(Compliance Store)" as art_db
+}
+cloud "S3 Document Bucket" as n_s3 <<ap-south-1>>
+node "Officer Workstation" as n_workstation <<corporate LAN>> {
+  artifact "review-console.bundle\\n(Review Console)" as art_ui
+}
+
+n_workstation --> n_ecs
+
+@enduml
+"
+`;
+
+exports[`projectors > interaction-overview > is stable 1`] = `
+"@startuml
+title SEBI Compliance Monitor — Interaction Overview
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+
+start
+:ref over Nightly Scheduler, Circular Fetcher, SEBI Portal
+  Nightly circular ingestion and analysis
+  (on Nightly schedule at 02:00 IST)
+end ref;
+stop
+
+@enduml
+"
+`;
+
+exports[`projectors > object > is stable 1`] = `
+"@startuml
+title SEBI Compliance Monitor — Runtime Snapshot
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+skinparam classAttributeIconSize 0
+
+object "a Circular : Circular" as circular_1 {
+  id = "sample-id"
+  reference = "sample-reference"
+  publishedAt = "2026-08-26T09:00:00Z"
+  sourceUrl = "sample-sourceUrl"
+}
+object "a Clause : Clause" as clause_1 {
+  number = "sample-number"
+  text = "sample-text"
+}
+object "an Obligation : Obligation" as obligation_1 {
+  summary = "sample-summary"
+  deadline = "2026-08-26T09:00:00Z"
+  applicability = "sample-applicability"
+}
+object "a Control : Control" as control_1 {
+  name = "sample-name"
+  owner = "«redacted»"
+}
+object "a Gap : Gap" as gap_1 {
+  severity = "sample-severity"
+  rationale = "sample-rationale"
+}
+object "an ImpactAssessment : ImpactAssessment" as impact_1 {
+  itEffortDays = 42
+  opsEffortDays = 42
+}
+
+circular_1 --> clause_1 : contains
+clause_1 --> obligation_1 : yields
+obligation_1 --> gap_1 : assessed by
+gap_1 --> control_1 : against
+impact_1 --> obligation_1 : for
+
+@enduml
+"
+`;
+
+exports[`projectors > package > is stable 1`] = `
+"@startuml
+title SEBI Compliance Monitor — Packages
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+skinparam componentStyle rectangle
+
+package "Ingestion" as pkg_ingest {
+  [Circular Fetcher] as circular_fetcher
+  [Clause Parser] as clause_parser
+}
+package "Analysis" as pkg_analysis {
+  [Requirement Extractor] as requirement_extractor
+  [Gap Analyser] as gap_analyser
+  [Impact Assessor] as impact_assessor
+}
+package "Platform" as pkg_platform {
+  [Compliance Store] as compliance_db
+  [Review Console] as review_ui
+  [Ingestion Queue] as ingest_queue
+}
+
+pkg_ingest ..> pkg_platform
+pkg_analysis ..> pkg_ingest
+pkg_analysis ..> pkg_platform
+
+@enduml
+"
+`;
+
+exports[`projectors > profile > is stable 1`] = `
+"@startuml
+title SEBI Compliance Monitor — UML Profile
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+
+package "SEBI Compliance Monitor Profile" <<Frame>> {
+  class Component <<metaclass>>
+  class Class <<metaclass>>
+
+  class Job <<stereotype>>
+  Job -up-|> Component
+  class Service <<stereotype>>
+  Service -up-|> Component
+  class External <<stereotype>>
+  External -up-|> Component
+  class Db <<stereotype>>
+  Db -up-|> Component
+  class Ui <<stereotype>>
+  Ui -up-|> Component
+  class Queue <<stereotype>>
+  Queue -up-|> Component
+
+  class Pii <<stereotype>> {
+    +lawfulBasis : string
+    +retentionDays : int
+  }
+  Pii -up-|> Class
+
+  class auditability <<stereotype>>
+  auditability -up-|> Component
+  class security <<stereotype>>
+  security -up-|> Component
+  class availability <<stereotype>>
+  availability -up-|> Component
+  class performance <<stereotype>>
+  performance -up-|> Component
+}
+
+legend right
+  **Constraints**
+  auditability: Every finding must trace back to a specific clause and circular…
+  security: Control owner identities are PII and must be access-controlled
+  availability: A failed nightly run must retry before 08:00 IST
+  performance: A single circular must complete analysis within 10 seconds
+end legend
+
+@enduml
+"
+`;
+
+exports[`projectors > sequence > is stable 1`] = `
+"@startuml
+title Nightly circular ingestion and analysis
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 220
+autonumber
+
+actor "Nightly Scheduler" as nightly_scheduler
+control "Circular Fetcher" as circular_fetcher
+actor "SEBI Portal" as sebi_portal
+queue "Ingestion Queue" as ingest_queue
+participant "Clause Parser" as clause_parser
+participant "Requirement Extractor" as requirement_extractor
+participant "Gap Analyser" as gap_analyser
+database "Compliance Store" as compliance_db
+actor "Compliance Officer" as compliance_officer
+
+note over nightly_scheduler : Trigger: Nightly schedule at 02:00 IST
+
+nightly_scheduler -> circular_fetcher : run ingestion
+circular_fetcher -> sebi_portal : GET /circulars?since=lastRun
+sebi_portal --> circular_fetcher : circular list + PDFs
+loop for each new circular
+circular_fetcher ->> ingest_queue : enqueue circular
+ingest_queue ->> clause_parser : deliver circular
+end
+clause_parser -> compliance_db : save clause table
+clause_parser -> requirement_extractor : extract obligations
+alt obligations found
+requirement_extractor -> gap_analyser : analyse gaps
+gap_analyser -> compliance_db : save findings
+end
+gap_analyser ->> compliance_officer : notify: findings ready for review
+
+group Error handling
+note over circular_fetcher : SEBI portal unreachable → retry with backoff, alert on 3rd failure
+note over clause_parser : PDF fails to parse → quarantine circular for manual review
+end
+
+@enduml
+"
+`;
+
+exports[`projectors > state-machine > is stable 1`] = `
+"@startuml
+title Circular — Lifecycle
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+
+state "Discovered" as s_discovered
+state "Parsed" as s_parsed
+state "Analysed" as s_analysed
+state "Quarantined" as s_quarantined
+state "Signed off" as s_signed_off
+
+[*] --> s_discovered : published by SEBI
+s_discovered --> s_parsed : parse [PDF readable] / build clause table
+s_discovered --> s_quarantined : parse [PDF unreadable] / notify operations
+s_parsed --> s_analysed : analyse / run gap and impact
+s_quarantined --> s_parsed : manual fix
+s_analysed --> s_signed_off : officer approves
+s_signed_off --> [*] : archive
+
+s_discovered : entry / record source URL
+s_parsed : entry / index clause table
+s_analysed : entry / attach gap and impact findings
+s_quarantined : entry / raise manual-review task
+s_signed_off : entry / stamp reviewer and timestamp
+
+@enduml
+"
+`;
+
+exports[`projectors > timing > is stable 1`] = `
+"@startuml
+title SEBI Compliance Monitor — Timing & SLAs
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+
+robust "Circular" as circular
+
+@0
+circular is Discovered
+@900
+circular is Parsed
+@4000
+circular is Analysed
+@30000
+circular is Reported
+
+legend right
+  Ingest to parsed: 2000 ms
+  Parsed to analysed: 10000 ms
+  End-to-end nightly run: 1800000 ms
+end legend
+
+@enduml
+"
+`;
+
+exports[`projectors > use-case > is stable 1`] = `
+"@startuml
+title SEBI Compliance Monitor — Use Cases
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontName "Helvetica"
+skinparam defaultFontSize 12
+skinparam roundCorner 6
+skinparam ArrowColor #33475B
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C97F
+left to right direction
+
+actor "Compliance Officer" as compliance_officer
+actor "SEBI Portal" as sebi_portal
+actor "Nightly Scheduler" as nightly_scheduler
+
+rectangle "SEBI Compliance Monitor" {
+  usecase "Ingest latest circulars" as uc_ingest
+  usecase "Review new obligations" as uc_review
+  usecase "Run gap analysis" as uc_gap
+  usecase "Assess IT and operational impact" as uc_impact
+}
+
+nightly_scheduler --> uc_ingest
+sebi_portal --> uc_ingest
+compliance_officer --> uc_review
+compliance_officer --> uc_gap
+compliance_officer --> uc_impact
+uc_review ..> uc_gap : <<include>>
+uc_impact ..> uc_gap : <<extend>>
+
+@enduml
+"
+`;

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.DS_Store
+*.log
+
+
+# Rendered diagrams — regenerated on demand, and the Python original committing
+# 20+ PNGs into history is the mistake being avoided here.
+output/
+
+# Vendored plantuml.jar (~30MB); fetch it with `npm run fetch:plantuml`.
+vendor/plantuml.jar
