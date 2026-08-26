@@ -1,16 +1,17 @@
-import { AlertCircle, GitBranch, Sparkles, User } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Check,
+  Copy,
+  GitBranch,
+  Sparkle,
+  User,
+  WarningCircle,
+} from '@phosphor-icons/react';
 import { DiagramTabs } from './DiagramTabs';
 import { IntegrityPanel } from './IntegrityPanel';
 import { PhaseTrail } from './PhaseTrail';
 import type { Turn } from '../hooks/useChat';
 
-/**
- * One exchange in the transcript.
- *
- * The label is what makes the brief's case 1 and case 2 distinguishable: the
- * same request produced a fresh model or patched an existing one, and only the
- * backend knows which.
- */
 export function ChatTurn({
   turn,
   isActive,
@@ -24,68 +25,130 @@ export function ChatTurn({
   onSelectDiagram: (turnId: string, type: string) => void;
   displayName: (id: string) => string;
 }) {
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
   const diagrams = [...turn.diagrams.values()];
+
+  const copyPromptText = () => {
+    navigator.clipboard.writeText(turn.prompt);
+    setCopiedPrompt(true);
+    setTimeout(() => setCopiedPrompt(false), 2000);
+  };
 
   const label =
     turn.status === 'streaming'
-      ? 'Working…'
+      ? 'Synthesizing Architecture…'
       : turn.kind === 'revise'
-        ? `Revised → v${turn.version}`
+        ? `Revision Patch → v${turn.version}`
         : turn.version !== null
-          ? `Generated v${turn.version}`
-          // No version means the run never reached `done` — it was stopped.
+          ? `Synthesized Specification v${turn.version}`
           : 'Stopped';
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex justify-end">
-        <div className="flex max-w-2xl gap-2.5 rounded-2xl rounded-br-sm border border-line bg-bg-card px-4 py-3">
-          <p className="text-sm whitespace-pre-wrap text-text-primary">{turn.prompt}</p>
-          <User size={14} className="mt-0.5 shrink-0 text-text-muted" />
+    <div className="flex flex-col gap-3.5">
+      {/* User Prompt Message Bubble */}
+      <div className="group flex justify-end">
+        <div className="relative flex max-w-3xl flex-col gap-1.5 rounded-2xl rounded-tr-sm border border-line-hover bg-bg-card p-3.5 shadow-md">
+          <div className="flex items-center justify-between gap-4 border-b border-line/60 pb-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-text-secondary">
+              <div className="flex size-4.5 items-center justify-center rounded-full bg-bg-tertiary text-text-muted">
+                <User size={11} weight="bold" />
+              </div>
+              <span>Architectural Prompt</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={copyPromptText}
+              title="Copy prompt text"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-text-muted opacity-0 transition-opacity group-hover:opacity-100 hover:text-text-primary"
+            >
+              {copiedPrompt ? <Check size={11} weight="bold" className="text-accent-emerald" /> : <Copy size={11} />}
+              <span>{copiedPrompt ? 'Copied' : 'Copy'}</span>
+            </button>
+          </div>
+
+          <p className="text-xs whitespace-pre-wrap font-sans leading-relaxed text-text-primary">
+            {turn.prompt}
+          </p>
         </div>
       </div>
 
-      <div className="flex gap-2.5">
-        <div className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-accent-indigo to-accent-violet">
+      {/* Assistant Response Card */}
+      <div className="flex items-start gap-3">
+        {/* Agent Avatar Badge */}
+        <div className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent-indigo text-white shadow-md">
           {turn.kind === 'revise' ? (
-            <GitBranch size={14} className="text-white" />
+            <GitBranch size={16} weight="bold" />
           ) : (
-            <Sparkles size={14} className="text-white" />
+            <Sparkle size={16} weight="fill" />
           )}
         </div>
 
+        {/* Turn Content Container */}
         <div
-          className={`min-w-0 flex-1 space-y-3 rounded-2xl rounded-tl-sm border p-3 transition ${
-            isActive ? 'border-line-active bg-bg-card' : 'border-line bg-bg-secondary/30'
+          className={`min-w-0 flex-1 space-y-3.5 rounded-2xl rounded-tl-sm border p-4 shadow-lg transition-all ${
+            isActive
+              ? 'border-accent-indigo/40 bg-bg-card shadow-[0_0_20px_rgba(99,102,241,0.08)] ring-1 ring-accent-indigo/20'
+              : 'border-line bg-bg-secondary/40'
           }`}
         >
-          <p className="text-xs font-medium text-text-secondary">{label}</p>
+          {/* Header Status Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-text-primary">{label}</span>
+              {turn.version !== null && (
+                <span className="rounded bg-accent-indigo/15 border border-accent-indigo/30 px-1.5 py-0.2 text-[10px] font-mono text-accent-indigo font-medium">
+                  v{turn.version}
+                </span>
+              )}
+            </div>
 
+            {turn.done && (
+              <span className="text-[11px] text-text-muted font-mono">
+                {(turn.done.ms / 1000).toFixed(1)}s elapsed · {turn.done.usage.llmCalls} calls
+              </span>
+            )}
+          </div>
+
+          {/* Phase Progress Pipeline */}
           <PhaseTrail
             phases={turn.phases}
             running={turn.status === 'streaming'}
             startedAt={turn.startedAt}
           />
 
+          {/* Rendered Diagrams Tab Selection */}
           {diagrams.length > 0 && (
-            <DiagramTabs
-              diagrams={diagrams}
-              activeType={isActive ? activeType : null}
-              onSelect={(type) => onSelectDiagram(turn.id, type)}
-              displayName={displayName}
-            />
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold tracking-wider text-text-muted uppercase">
+                Generated Diagram Projections ({diagrams.length}):
+              </p>
+              <DiagramTabs
+                diagrams={diagrams}
+                activeType={isActive ? activeType : null}
+                onSelect={(type) => onSelectDiagram(turn.id, type)}
+                displayName={displayName}
+              />
+            </div>
           )}
 
+          {/* Integrity & Diagnostics Panel */}
           {turn.done && <IntegrityPanel done={turn.done} displayName={displayName} />}
 
+          {/* Error Banner */}
           {turn.error && (
-            <p className="flex items-start gap-2 rounded-lg border border-accent-rose/40 bg-accent-rose/10 p-2.5 text-xs text-accent-rose">
-              <AlertCircle size={14} className="mt-px shrink-0" />
-              {turn.error}
-            </p>
+            <div className="flex items-start gap-2.5 rounded-xl border border-accent-rose/40 bg-accent-rose/10 p-3 text-xs text-accent-rose">
+              <WarningCircle size={15} weight="bold" className="mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold">Turn execution interrupted</p>
+                <p className="mt-0.5 text-[11px] text-accent-rose/90">{turn.error}</p>
+              </div>
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 }
+
+

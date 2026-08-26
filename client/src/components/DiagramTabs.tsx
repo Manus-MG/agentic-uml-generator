@@ -1,9 +1,38 @@
+import {
+  FileCode,
+  Pulse,
+  ShareNetwork,
+  SquaresFour,
+  Stack,
+  TreeStructure,
+  Users,
+} from '@phosphor-icons/react';
 import type { DiagramPayload } from '../types/uml';
 
-/** The dot encodes three states, not two: null is "not checked yet". */
-function statusDot(valid: boolean | null): string {
-  if (valid === null) return 'bg-text-muted animate-pulse';
-  return valid ? 'bg-accent-emerald' : 'bg-accent-rose';
+function getDiagramIcon(type: string) {
+  switch (type.toLowerCase()) {
+    case 'sequence':
+    case 'communication':
+    case 'timing':
+    case 'interaction_overview':
+      return TreeStructure;
+    case 'component':
+    case 'composite_structure':
+      return SquaresFour;
+    case 'class':
+    case 'object':
+    case 'package':
+      return Stack;
+    case 'use_case':
+      return Users;
+    case 'activity':
+    case 'state_machine':
+      return Pulse;
+    case 'deployment':
+      return ShareNetwork;
+    default:
+      return FileCode;
+  }
 }
 
 export function DiagramTabs({
@@ -21,22 +50,33 @@ export function DiagramTabs({
     <div className="flex flex-wrap gap-1.5">
       {diagrams.map((diagram) => {
         const active = diagram.type === activeType;
+        const Icon = getDiagramIcon(diagram.type);
+
         return (
           <button
             key={diagram.type}
             type="button"
             onClick={() => onSelect(diagram.type)}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+            className={`group flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
               active
-                ? 'border-line-active bg-accent-indigo/15 text-text-primary'
-                : 'border-line bg-bg-secondary/40 text-text-secondary hover:bg-bg-card-hover'
+                ? 'border-accent-indigo bg-accent-indigo/15 text-text-primary ring-1 ring-accent-indigo/40'
+                : 'border-line bg-bg-secondary text-text-secondary hover:border-line-hover hover:bg-bg-card-hover hover:text-text-primary'
             }`}
           >
-            <span className={`size-1.5 rounded-full ${statusDot(diagram.valid)}`} />
-            {displayName(diagram.type)}
+            <span
+              className={`size-2 rounded-full ${
+                diagram.valid === null
+                  ? 'bg-text-muted animate-pulse'
+                  : diagram.valid
+                    ? 'bg-accent-emerald'
+                    : 'bg-accent-rose'
+              }`}
+            />
+            <Icon size={14} weight={active ? 'bold' : 'regular'} className={active ? 'text-accent-indigo' : 'text-text-muted group-hover:text-text-secondary'} />
+            <span>{displayName(diagram.type)}</span>
             {diagram.carriedForward && (
-              <span className="rounded bg-bg-tertiary px-1 py-px text-[10px] text-text-muted">
-                unchanged
+              <span className="rounded bg-bg-tertiary px-1 py-0.2 text-[9px] text-text-muted uppercase font-mono">
+                cached
               </span>
             )}
           </button>
@@ -45,3 +85,5 @@ export function DiagramTabs({
     </div>
   );
 }
+
+

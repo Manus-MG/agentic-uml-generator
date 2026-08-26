@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Sparkles } from 'lucide-react';
+import {
+  SidebarSimple,
+  SquaresFour,
+  WarningCircle,
+} from '@phosphor-icons/react';
 import { ChatPanel } from './components/ChatPanel';
 import { Composer } from './components/Composer';
 import { DiagramPane } from './components/DiagramPane';
@@ -11,15 +15,6 @@ import { useHealth } from './hooks/useHealth';
 import { useSessions } from './hooks/useSessions';
 import { api } from './services/api';
 
-/**
- * The chat platform from the brief.
- *
- * Three panes: the sessions this backend still holds, the conversation, and the
- * diagram currently under discussion. All three cases the brief asks for run
- * through the same conversation — a first prompt generates, a later prompt on
- * the same session revises, and every diagram carries the rating control that
- * feeds the RL trainer.
- */
 export function App() {
   const { sessions, activeId, setActiveId, startNew, remove, refresh } = useSessions();
   const { catalogue, displayName } = useDiagramTypes();
@@ -33,19 +28,14 @@ export function App() {
   const [switching, setSwitching] = useState<string | null>(null);
   const [lastSwitchCost, setLastSwitchCost] = useState<{ type: string; llmCalls: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [diagramPaneOpen, setDiagramPaneOpen] = useState(true);
 
   const activeTurn = useMemo(
     () => turns.find((turn) => turn.id === activeTurnId) ?? turns[turns.length - 1] ?? null,
     [turns, activeTurnId],
   );
 
-  /**
-   * The diagram in the right-hand pane.
-   *
-   * While a new turn is still streaming it has no diagrams yet, and blanking
-   * the pane at exactly that moment is the worst time to do it — so the last
-   * turn that produced something stays on screen until the new one has output.
-   */
   const displayTurn = useMemo(() => {
     if (activeTurn && activeTurn.diagrams.size > 0) return activeTurn;
     for (let i = turns.length - 1; i >= 0; i -= 1) {
@@ -60,7 +50,10 @@ export function App() {
     return [...displayTurn.diagrams.values()][0] ?? null;
   }, [displayTurn, activeType]);
 
-  // Follow the newest turn as its diagrams arrive, until the user picks one.
+  const activeSessionTitle = useMemo(() => {
+    return sessions.find((s) => s.sessionId === activeId)?.title ?? 'New Architecture Session';
+  }, [sessions, activeId]);
+
   useEffect(() => {
     const latest = turns[turns.length - 1];
     if (!latest) {
@@ -77,18 +70,9 @@ export function App() {
       setActiveTurnId(latest.id);
       setActiveType([...latest.diagrams.keys()][0] ?? null);
     }
-    // `activeType` is deliberately not a dependency: reacting to it here would
-    // undo the user's own tab choice on the next render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turns, activeTurnId]);
 
-  /**
-   * There is always an active id, even before anything is sent.
-   *
-   * Minting it at send time instead would leave the send closure holding the
-   * old null id, and the message would go nowhere. Nothing is written to the
-   * backend until the first turn, so an unused id costs nothing.
-   */
   useEffect(() => {
     if (!activeId) startNew();
   }, [activeId, startNew]);
@@ -96,12 +80,20 @@ export function App() {
   const isRevision = turns.length > 0;
 
   const handleSend = useCallback(
-    async (prompt: string) => {
+    async (prompt: string, overrideTypes?: string[]) => {
       setError(null);
-      await send(prompt, selectedTypes);
+      await send(prompt, overrideTypes ?? selectedTypes);
       await refresh();
     },
     [send, selectedTypes, refresh],
+  );
+
+  const handleSelectTemplate = useCallback(
+    (templatePrompt: string, templateTypes: string[]) => {
+      setSelectedTypes(templateTypes);
+      void handleSend(templatePrompt, templateTypes);
+    },
+    [handleSend],
   );
 
   const handleSwitchView = useCallback(
@@ -125,7 +117,6 @@ export function App() {
     [activeId, addView, turns],
   );
 
-  /** The sidebar asks for confirmation inline before calling this. */
   const handleDelete = useCallback(
     async (sessionId: string) => {
       try {
@@ -138,40 +129,82 @@ export function App() {
   );
 
   return (
-    <div className="flex h-full">
-      <SessionSidebar
-        sessions={sessions}
-        activeId={activeId}
-        onSelect={setActiveId}
-        onNew={() => {
-          startNew();
-          setActiveTurnId(null);
-          setActiveType(null);
-          setLastSwitchCost(null);
-        }}
-        onDelete={handleDelete}
-        health={health}
-        status={status}
-        exportUrl={api.getFeedbackExportUrl(activeId ?? undefined)}
-      />
+    <div className="flex h-full bg-bg-primary text-text-primary">
+      {/* Collapsible Left Sidebar */}
+      {sidebarOpen && (
+        <SessionSidebar
+          sessions={sessions}
+          activeId={activeId}
+          onSelect={setActiveId}
+          onNew={() => {
+            startNew();
+            setActiveTurnId(null);
+            setActiveType(null);
+            setLastSwitchCost(null);
+          }}
+          onDelete={handleDelete}
+          health={health}
+          status={status}
+          exportUrl={api.getFeedbackExportUrl(activeId ?? undefined)}
+        />
+      )}
 
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-2.5 border-b border-line px-4 py-3">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-accent-indigo to-accent-violet">
-            <Sparkles size={16} className="text-white" />
+      {/* Center Main Workstation */}
+      <main className="flex min-w-0 flex-1 flex-col bg-bg-primary">
+        {/* Studio Top Header */}
+        <header className="flex items-center justify-between border-b border-line px-4 py-2.5 bg-bg-secondary">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((s) => !s)}
+              title={sidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
+              className="rounded p-1 text-text-muted hover:bg-bg-tertiary hover:text-text-primary"
+            >
+              <SidebarSimple size={16} weight={sidebarOpen ? 'fill' : 'regular'} />
+            </button>
+
+            <div className="flex size-7 items-center justify-center rounded-lg bg-accent-indigo text-white shadow-sm">
+              <SquaresFour size={16} weight="bold" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-xs font-bold text-text-primary">
+                  {activeSessionTitle}
+                </h1>
+                {displayTurn?.version !== null && displayTurn?.version !== undefined && (
+                  <span className="rounded bg-accent-indigo/15 border border-accent-indigo/30 px-1.5 py-0.2 text-[10px] font-mono text-accent-indigo">
+                    v{displayTurn.version}
+                  </span>
+                )}
+              </div>
+              <p className="truncate text-[10px] text-text-muted font-mono">
+                {activeId ? `Session ID: ${activeId}` : 'New session standby'}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-sm font-semibold text-text-primary">UML Architecture Chat</h1>
-            <p className="truncate text-[11px] text-text-muted">
-              {activeId ? `Session ${activeId}` : 'No session — send a message to start one'}
-            </p>
+
+          <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-1.5 rounded-full border border-line bg-bg-primary px-2.5 py-1 text-[11px] text-text-muted sm:flex">
+              <span className="size-1.5 rounded-full bg-accent-emerald" />
+              <span>Groq LLM + PlantUML</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setDiagramPaneOpen((d) => !d)}
+              title={diagramPaneOpen ? 'Hide Diagram Canvas' : 'Show Diagram Canvas'}
+              className="rounded p-1 text-text-muted hover:bg-bg-tertiary hover:text-text-primary xl:flex hidden"
+            >
+              <SidebarSimple size={16} weight={diagramPaneOpen ? 'fill' : 'regular'} className="rotate-180" />
+            </button>
           </div>
         </header>
 
         {error && (
-          <div className="flex items-center justify-between gap-3 border-b border-accent-rose/40 bg-accent-rose/10 px-4 py-2">
+          <div className="flex items-center justify-between gap-3 border-b border-accent-rose/30 bg-accent-rose/10 px-4 py-2">
             <p className="flex items-center gap-2 text-xs text-accent-rose">
-              <AlertCircle size={14} /> {error}
+              <WarningCircle size={15} weight="bold" /> {error}
             </p>
             <button
               type="button"
@@ -192,6 +225,7 @@ export function App() {
             setActiveType(type);
           }}
           displayName={displayName}
+          onSelectTemplate={handleSelectTemplate}
         />
 
         <Composer
@@ -206,20 +240,24 @@ export function App() {
         />
       </main>
 
-      <DiagramPane
-        sessionId={activeId}
-        diagram={activeDiagram}
-        version={displayTurn?.version ?? null}
-        catalogue={catalogue}
-        displayName={displayName}
-        onSwitchView={(type) => void handleSwitchView(type)}
-        switching={switching}
-        lastSwitchCost={lastSwitchCost}
-        knownRating={activeDiagram?.diagramId ? knownRatings.get(activeDiagram.diagramId) : undefined}
-        onRated={recordRating}
-      />
+      {/* Right Diagram Inspection Canvas Pane */}
+      {diagramPaneOpen && (
+        <DiagramPane
+          sessionId={activeId}
+          diagram={activeDiagram}
+          version={displayTurn?.version ?? null}
+          catalogue={catalogue}
+          displayName={displayName}
+          onSwitchView={(type) => void handleSwitchView(type)}
+          switching={switching}
+          lastSwitchCost={lastSwitchCost}
+          knownRating={activeDiagram?.diagramId ? knownRatings.get(activeDiagram.diagramId) : undefined}
+          onRated={recordRating}
+        />
+      )}
     </div>
   );
 }
 
 export default App;
+

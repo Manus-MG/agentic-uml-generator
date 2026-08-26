@@ -1,5 +1,15 @@
-import { useState } from 'react';
-import { Check, Clock, MessageSquarePlus, Server, Trash2, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  Check,
+  Clock,
+  DownloadSimple,
+  HardDrives,
+  MagnifyingGlass,
+  PlusCircle,
+  Stack,
+  Trash,
+  X,
+} from '@phosphor-icons/react';
 import type { HealthStatus } from '../hooks/useHealth';
 import type { BackendHealthResponse, SessionSummary } from '../types/uml';
 
@@ -12,11 +22,11 @@ function relative(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-const STATUS_STYLE: Record<HealthStatus, string> = {
-  ok: 'text-accent-emerald',
-  degraded: 'text-accent-amber',
-  unreachable: 'text-accent-rose',
-  checking: 'text-text-muted',
+const STATUS_STYLE: Record<HealthStatus, { text: string; dot: string; label: string }> = {
+  ok: { text: 'text-accent-emerald', dot: 'bg-accent-emerald', label: 'All Systems Operational' },
+  degraded: { text: 'text-accent-amber', dot: 'bg-accent-amber', label: 'Degraded' },
+  unreachable: { text: 'text-accent-rose', dot: 'bg-accent-rose', label: 'Backend Unreachable' },
+  checking: { text: 'text-text-muted', dot: 'bg-text-muted animate-pulse', label: 'Checking Health…' },
 };
 
 export function SessionSidebar({
@@ -38,42 +48,82 @@ export function SessionSidebar({
   status: HealthStatus;
   exportUrl: string;
 }) {
-  // An inline confirm rather than window.confirm: a modal dialog blocks the
-  // whole page, and deleting a chat does not warrant that.
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+
+  const filteredSessions = useMemo(() => {
+    if (!search.trim()) return sessions;
+    const query = search.toLowerCase();
+    return sessions.filter(
+      (s) =>
+        s.title.toLowerCase().includes(query) ||
+        s.sessionId.toLowerCase().includes(query),
+    );
+  }, [sessions, search]);
 
   return (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-r border-line bg-bg-secondary/40">
-      <div className="border-b border-line p-3">
+    <aside className="flex h-full w-72 shrink-0 flex-col border-r border-line bg-bg-secondary">
+      {/* Top New Chat Action */}
+      <div className="border-b border-line p-3 space-y-2">
         <button
           type="button"
           onClick={onNew}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-linear-to-br from-accent-indigo to-accent-violet px-3 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-indigo px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-accent-indigo-hover active:translate-y-px"
         >
-          <MessageSquarePlus size={16} /> New chat
+          <PlusCircle size={16} weight="bold" />
+          <span>New Architecture Session</span>
         </button>
+
+        {/* Session Search Input */}
+        {sessions.length > 0 && (
+          <div className="relative">
+            <MagnifyingGlass size={13} className="absolute top-2.5 left-2.5 text-text-muted" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search sessions…"
+              className="w-full rounded-md border border-line bg-bg-primary py-1.5 pr-6 pl-7 text-xs text-text-primary placeholder:text-text-muted focus:border-accent-indigo focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute top-2 right-2 text-text-muted hover:text-text-primary"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
+      {/* Session List */}
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        <p className="px-1 pb-2 text-[11px] font-medium tracking-wide text-text-muted uppercase">
-          Sessions
-        </p>
+        <div className="flex items-center justify-between px-2 pb-1.5 text-[11px] font-semibold tracking-wider text-text-muted uppercase">
+          <span>Sessions</span>
+          <span className="font-mono text-[10px]">{filteredSessions.length}</span>
+        </div>
 
-        {sessions.length === 0 ? (
-          <p className="px-1 text-xs text-text-muted">
-            No sessions yet. Start a chat and describe a system.
-          </p>
+        {filteredSessions.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-line p-4 text-center">
+            <Stack size={20} className="mx-auto text-text-muted" />
+            <p className="mt-2 text-xs font-medium text-text-secondary">No sessions found</p>
+            <p className="mt-0.5 text-[11px] text-text-muted">
+              {search ? 'Try a different search query' : 'Synthesize your first architecture'}
+            </p>
+          </div>
         ) : (
           <ul className="space-y-1">
-            {sessions.map((session) => {
+            {filteredSessions.map((session) => {
               const active = session.sessionId === activeId;
               return (
                 <li key={session.sessionId}>
                   <div
-                    className={`group flex items-start gap-2 rounded-lg border px-2.5 py-2 transition ${
+                    className={`group flex items-start gap-2 rounded-lg border p-2.5 transition ${
                       active
-                        ? 'border-line-active bg-accent-indigo/10'
-                        : 'border-transparent hover:bg-bg-card-hover'
+                        ? 'border-accent-indigo bg-bg-tertiary text-text-primary shadow-sm'
+                        : 'border-transparent text-text-secondary hover:border-line hover:bg-bg-card hover:text-text-primary'
                     }`}
                   >
                     <button
@@ -81,13 +131,21 @@ export function SessionSidebar({
                       onClick={() => onSelect(session.sessionId)}
                       className="min-w-0 flex-1 text-left"
                     >
-                      <p className="truncate text-xs text-text-primary">{session.title}</p>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-text-muted">
-                        <Clock size={10} />
-                        {relative(session.updatedAt)} · v{session.currentVersion} · {session.turnCount} turn
-                        {session.turnCount === 1 ? '' : 's'}
-                      </p>
+                      <p className="truncate text-xs font-medium">{session.title}</p>
+                      <div className="mt-1 flex items-center gap-2 text-[11px] text-text-muted">
+                        <span className="flex items-center gap-1 font-mono">
+                          <Clock size={11} />
+                          {relative(session.updatedAt)}
+                        </span>
+                        <span>•</span>
+                        <span className="rounded bg-bg-primary px-1 py-0.2 font-mono text-[10px] text-text-secondary border border-line">
+                          v{session.currentVersion}
+                        </span>
+                        <span>•</span>
+                        <span>{session.turnCount} turn{session.turnCount === 1 ? '' : 's'}</span>
+                      </div>
                     </button>
+
                     {confirming === session.sessionId ? (
                       <span className="flex shrink-0 items-center gap-0.5">
                         <button
@@ -97,9 +155,9 @@ export function SessionSidebar({
                             setConfirming(null);
                             onDelete(session.sessionId);
                           }}
-                          className="rounded p-1 text-accent-rose hover:bg-accent-rose/15"
+                          className="rounded bg-accent-rose/20 p-1 text-accent-rose hover:bg-accent-rose/30"
                         >
-                          <Check size={13} />
+                          <Check size={13} weight="bold" />
                         </button>
                         <button
                           type="button"
@@ -113,11 +171,11 @@ export function SessionSidebar({
                     ) : (
                       <button
                         type="button"
-                        title="Delete this session (ratings are kept)"
+                        title="Delete this session"
                         onClick={() => setConfirming(session.sessionId)}
-                        className="rounded p-1 text-text-muted opacity-0 transition group-hover:opacity-100 hover:text-accent-rose"
+                        className="rounded p-1 text-text-muted opacity-0 transition group-hover:opacity-100 hover:bg-accent-rose/15 hover:text-accent-rose"
                       >
-                        <Trash2 size={13} />
+                        <Trash size={14} />
                       </button>
                     )}
                   </div>
@@ -128,28 +186,52 @@ export function SessionSidebar({
         )}
       </div>
 
-      <div className="space-y-2 border-t border-line p-3">
+      {/* Footer System HUD & RL Export */}
+      <div className="space-y-2.5 border-t border-line bg-bg-primary p-3">
         <a
           href={exportUrl}
           download
-          className="block rounded-lg border border-line px-2.5 py-2 text-xs text-text-secondary transition hover:bg-bg-card-hover"
+          className="flex items-center justify-between rounded-lg border border-line bg-bg-secondary px-3 py-2 text-xs font-medium text-text-secondary transition hover:border-line-hover hover:text-text-primary"
         >
-          Download RL training data (.jsonl)
-          <span className="mt-0.5 block text-[11px] text-text-muted">
-            Ratings joined to LLM trajectories, for the ART trainer.
+          <div className="flex items-center gap-2">
+            <DownloadSimple size={14} className="text-accent-indigo" />
+            <span>RLHF Dataset (.jsonl)</span>
+          </div>
+          <span className="rounded bg-bg-tertiary px-1.5 py-0.2 text-[9px] font-mono text-text-muted">
+            ART Trajectory
           </span>
         </a>
 
-        <p className={`flex items-center gap-1.5 text-[11px] ${STATUS_STYLE[status]}`}>
-          <Server size={11} />
-          {status === 'checking' && 'Checking backend…'}
-          {status === 'unreachable' && 'Backend unreachable'}
-          {(status === 'ok' || status === 'degraded') &&
-            `${health?.checks?.mongo ?? '?'} · ${health?.checks?.plantuml ?? '?'} · groq ${
-              health?.checks?.groq ?? '?'
-            }`}
-        </p>
+        {/* Service Health Badges */}
+        <div className="rounded-lg border border-line bg-bg-secondary p-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold text-text-secondary">
+              <span className={`size-2 rounded-full ${STATUS_STYLE[status].dot}`} />
+              {STATUS_STYLE[status].label}
+            </span>
+            <HardDrives size={13} className="text-text-muted" />
+          </div>
+
+          {(status === 'ok' || status === 'degraded') && health?.checks && (
+            <div className="mt-1.5 grid grid-cols-3 gap-1 pt-1.5 border-t border-line/60 text-[10px] font-mono text-text-muted">
+              <div>
+                <span className="block text-text-muted/70">Mongo</span>
+                <span className="text-accent-emerald">{health.checks.mongo}</span>
+              </div>
+              <div>
+                <span className="block text-text-muted/70">PlantUML</span>
+                <span className="text-accent-emerald">{health.checks.plantuml}</span>
+              </div>
+              <div>
+                <span className="block text-text-muted/70">Groq</span>
+                <span className="text-accent-emerald">{health.checks.groq}</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );
 }
+
+
