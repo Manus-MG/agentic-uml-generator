@@ -24,11 +24,11 @@ function relative(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-const STATUS_STYLE: Record<HealthStatus, { text: string; dot: string; label: string }> = {
-  ok: { text: 'text-accent-emerald', dot: 'bg-accent-emerald', label: 'All Systems Operational' },
-  degraded: { text: 'text-accent-amber', dot: 'bg-accent-amber', label: 'Degraded' },
-  unreachable: { text: 'text-accent-rose', dot: 'bg-accent-rose', label: 'Backend Unreachable' },
-  checking: { text: 'text-text-muted', dot: 'bg-text-muted animate-pulse', label: 'Checking Health…' },
+const STATUS_STYLE: Record<HealthStatus, { dot: string; label: string }> = {
+  ok: { dot: 'bg-accent-emerald', label: 'All systems operational' },
+  degraded: { dot: 'bg-accent-amber', label: 'Degraded' },
+  unreachable: { dot: 'bg-accent-rose', label: 'Backend unreachable' },
+  checking: { dot: 'bg-text-muted animate-pulse', label: 'Checking health…' },
 };
 
 export function SessionSidebar({
@@ -73,15 +73,15 @@ export function SessionSidebar({
       <div className="border-b border-line p-3 bg-bg-primary/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent-indigo/20 text-accent-indigo font-bold text-xs border border-accent-indigo/30">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-accent-orange/10 text-accent-orange font-bold text-xs border border-line-active/30">
               {currentUser ? currentUser.name.charAt(0).toUpperCase() : <UserCircle size={16} />}
             </div>
             <div className="min-w-0">
               <p className="truncate text-xs font-bold text-text-primary">
-                {currentUser ? currentUser.name : 'Guest / No User'}
+                {currentUser ? currentUser.name : 'Guest / No user'}
               </p>
               <p className="truncate text-[10px] font-mono text-text-muted">
-                {currentUser?.userId ?? 'Anonymous'}
+                {currentUser?.userId ?? 'anonymous'}
               </p>
             </div>
           </div>
@@ -89,10 +89,10 @@ export function SessionSidebar({
           <button
             type="button"
             onClick={onOpenUserModal}
-            title="Switch or Change User"
-            className="flex items-center gap-1 rounded-lg border border-line bg-bg-secondary px-2 py-1 text-[11px] font-medium text-text-secondary transition hover:border-line-hover hover:text-text-primary hover:bg-bg-tertiary"
+            title="Switch or change user"
+            className="flex items-center gap-1 rounded-sm border border-line bg-bg-secondary px-2 py-1 text-[11px] font-medium text-text-secondary transition hover:border-line-hover hover:text-text-primary hover:bg-bg-tertiary"
           >
-            <UserSwitch size={13} className="text-accent-indigo" />
+            <UserSwitch size={13} className="text-accent-orange" />
             <span>Switch</span>
           </button>
         </div>
@@ -103,10 +103,10 @@ export function SessionSidebar({
         <button
           type="button"
           onClick={onNew}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-indigo px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-accent-indigo-hover active:translate-y-px shadow-sm"
+          className="flex w-full items-center justify-center gap-2 rounded-sm bg-accent-orange px-3 py-2.5 text-xs font-semibold text-bg-primary transition hover:bg-accent-orange-hover active:translate-y-px"
         >
           <PlusCircle size={16} weight="bold" />
-          <span>New Architecture Session</span>
+          <span>New session</span>
         </button>
 
         {/* Session Search Input */}
@@ -118,7 +118,7 @@ export function SessionSidebar({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search sessions…"
-              className="w-full rounded-md border border-line bg-bg-primary py-1.5 pr-6 pl-7 text-xs text-text-primary placeholder:text-text-muted focus:border-accent-indigo focus:outline-none"
+              className="w-full rounded-sm border border-line bg-bg-primary py-1.5 pr-6 pl-7 text-xs text-text-primary placeholder:text-text-muted focus:border-line-active focus:outline-none"
             />
             {search && (
               <button
@@ -135,13 +135,13 @@ export function SessionSidebar({
 
       {/* Session List */}
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        <div className="flex items-center justify-between px-2 pb-1.5 text-[11px] font-semibold tracking-wider text-text-muted uppercase">
-          <span>{currentUser ? `${currentUser.name}'s Sessions` : 'Sessions'}</span>
+        <div className="flex items-center justify-between px-2 pb-1.5 text-[11px] font-mono font-semibold tracking-wider text-text-muted uppercase">
+          <span>{currentUser ? `${currentUser.name}'s sessions` : 'Sessions'}</span>
           <span className="font-mono text-[10px]">{filteredSessions.length}</span>
         </div>
 
         {filteredSessions.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-line p-4 text-center">
+          <div className="rounded-sm border border-dashed border-line p-4 text-center">
             <Stack size={20} className="mx-auto text-text-muted" />
             <p className="mt-2 text-xs font-medium text-text-secondary">No sessions found</p>
             <p className="mt-0.5 text-[11px] text-text-muted">
@@ -155,9 +155,9 @@ export function SessionSidebar({
               return (
                 <li key={session.sessionId}>
                   <div
-                    className={`group flex items-start gap-2 rounded-lg border p-2.5 transition ${
+                    className={`group flex items-start gap-2 rounded-sm border p-2.5 transition-colors ${
                       active
-                        ? 'border-accent-indigo bg-bg-tertiary text-text-primary shadow-sm'
+                        ? 'border-l-2 border-l-accent-orange border-y-line border-r-line bg-bg-tertiary text-text-primary'
                         : 'border-transparent text-text-secondary hover:border-line hover:bg-bg-card hover:text-text-primary'
                     }`}
                   >
@@ -173,7 +173,7 @@ export function SessionSidebar({
                           {relative(session.updatedAt)}
                         </span>
                         <span>•</span>
-                        <span className="rounded bg-bg-primary px-1 py-0.2 font-mono text-[10px] text-text-secondary border border-line">
+                        <span className="rounded-sm bg-bg-primary px-1 py-0.5 font-mono text-[10px] text-text-secondary border border-line">
                           v{session.currentVersion}
                         </span>
                         <span>•</span>
@@ -190,7 +190,7 @@ export function SessionSidebar({
                             setConfirming(null);
                             onDelete(session.sessionId);
                           }}
-                          className="rounded bg-accent-rose/20 p-1 text-accent-rose hover:bg-accent-rose/30"
+                          className="rounded-sm bg-accent-rose/15 p-1 text-accent-rose hover:bg-accent-rose/25"
                         >
                           <Check size={13} weight="bold" />
                         </button>
@@ -198,7 +198,7 @@ export function SessionSidebar({
                           type="button"
                           title="Cancel"
                           onClick={() => setConfirming(null)}
-                          className="rounded p-1 text-text-muted hover:text-text-primary"
+                          className="rounded-sm p-1 text-text-muted hover:text-text-primary"
                         >
                           <X size={13} />
                         </button>
@@ -208,7 +208,7 @@ export function SessionSidebar({
                         type="button"
                         title="Delete this session"
                         onClick={() => setConfirming(session.sessionId)}
-                        className="rounded p-1 text-text-muted opacity-0 transition group-hover:opacity-100 hover:bg-accent-rose/15 hover:text-accent-rose"
+                        className="rounded-sm p-1 text-text-muted opacity-0 transition group-hover:opacity-100 hover:bg-accent-rose/10 hover:text-accent-rose"
                       >
                         <Trash size={14} />
                       </button>
@@ -226,19 +226,19 @@ export function SessionSidebar({
         <a
           href={exportUrl}
           download
-          className="flex items-center justify-between rounded-lg border border-line bg-bg-secondary px-3 py-2 text-xs font-medium text-text-secondary transition hover:border-line-hover hover:text-text-primary"
+          className="flex items-center justify-between rounded-sm border border-line bg-bg-secondary px-3 py-2 text-xs font-medium text-text-secondary transition hover:border-line-hover hover:text-text-primary"
         >
           <div className="flex items-center gap-2">
-            <DownloadSimple size={14} className="text-accent-indigo" />
-            <span>RLHF Dataset (.jsonl)</span>
+            <DownloadSimple size={14} className="text-accent-orange" />
+            <span>RLHF dataset (.jsonl)</span>
           </div>
-          <span className="rounded bg-bg-tertiary px-1.5 py-0.2 text-[9px] font-mono text-text-muted">
-            ART Trajectory
+          <span className="rounded-sm bg-bg-tertiary px-1.5 py-0.5 text-[9px] font-mono text-text-muted">
+            ART trajectory
           </span>
         </a>
 
         {/* Service Health Badges */}
-        <div className="rounded-lg border border-line bg-bg-secondary p-2 text-xs">
+        <div className="rounded-sm border border-line bg-bg-secondary p-2 text-xs">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px] font-semibold text-text-secondary">
               <span className={`size-2 rounded-full ${STATUS_STYLE[status].dot}`} />
@@ -248,7 +248,7 @@ export function SessionSidebar({
           </div>
 
           {(status === 'ok' || status === 'degraded') && health?.checks && (
-            <div className="mt-1.5 grid grid-cols-3 gap-1 pt-1.5 border-t border-line/60 text-[10px] font-mono text-text-muted">
+            <div className="mt-1.5 grid grid-cols-3 gap-1 pt-1.5 border-t border-line text-[10px] font-mono text-text-muted">
               <div>
                 <span className="block text-text-muted/70">Mongo</span>
                 <span className="text-accent-emerald">{health.checks.mongo}</span>
@@ -268,5 +268,3 @@ export function SessionSidebar({
     </aside>
   );
 }
-
-

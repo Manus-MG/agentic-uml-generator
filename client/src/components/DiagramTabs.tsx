@@ -57,9 +57,9 @@ export function DiagramTabs({
             key={diagram.type}
             type="button"
             onClick={() => onSelect(diagram.type)}
-            className={`group flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`group flex items-center gap-2 rounded-sm border px-3 py-1.5 text-xs font-medium transition-colors ${
               active
-                ? 'border-accent-indigo bg-accent-indigo/15 text-text-primary ring-1 ring-accent-indigo/40'
+                ? 'border-line-active bg-accent-orange/10 text-text-primary'
                 : 'border-line bg-bg-secondary text-text-secondary hover:border-line-hover hover:bg-bg-card-hover hover:text-text-primary'
             }`}
           >
@@ -72,10 +72,10 @@ export function DiagramTabs({
                     : 'bg-accent-rose'
               }`}
             />
-            <Icon size={14} weight={active ? 'bold' : 'regular'} className={active ? 'text-accent-indigo' : 'text-text-muted group-hover:text-text-secondary'} />
+            <Icon size={14} weight={active ? 'bold' : 'regular'} className={active ? 'text-accent-orange' : 'text-text-muted group-hover:text-text-secondary'} />
             <span>{displayName(diagram.type)}</span>
             {diagram.carriedForward && (
-              <span className="rounded bg-bg-tertiary px-1 py-0.2 text-[9px] text-text-muted uppercase font-mono">
+              <span className="rounded-sm bg-bg-tertiary px-1 py-0.5 text-[9px] text-text-muted uppercase font-mono">
                 cached
               </span>
             )}
@@ -85,5 +85,3 @@ export function DiagramTabs({
     </div>
   );
 }
-
-

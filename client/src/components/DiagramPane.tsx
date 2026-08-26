@@ -42,7 +42,7 @@ export function DiagramPane({
   if (!sessionId || !diagram) {
     return (
       <aside className="hidden w-[42%] min-w-96 shrink-0 flex-col items-center justify-center border-l border-line bg-bg-secondary p-8 text-center xl:flex">
-        <div className="flex size-14 items-center justify-center rounded-2xl border border-line bg-bg-primary text-accent-indigo shadow-sm">
+        <div className="flex size-14 items-center justify-center rounded-2xl border border-line bg-bg-primary text-accent-orange shadow-sm">
           <Stack size={28} className="text-text-muted" />
         </div>
         <h3 className="mt-4 text-sm font-semibold text-text-primary">Studio Canvas Standby</h3>
@@ -69,7 +69,7 @@ export function DiagramPane({
               {displayName(diagram.type)}
             </h2>
             {version !== null && (
-              <span className="rounded bg-accent-indigo/15 border border-accent-indigo/30 px-1.5 py-0.2 text-[10px] font-mono text-accent-indigo">
+              <span className="rounded-full bg-orange-500/15 border border-orange-500/30 px-2 py-0.2 text-[10px] font-mono text-orange-400 font-semibold">
                 v{version}
               </span>
             )}
@@ -95,7 +95,7 @@ export function DiagramPane({
               onClick={() => setTab(id)}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition ${
                 tab === id
-                  ? 'bg-accent-indigo/20 text-accent-indigo'
+                  ? 'bg-orange-500/20 text-orange-400 font-semibold'
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
@@ -116,7 +116,7 @@ export function DiagramPane({
               <span className="text-xs font-semibold text-text-muted">PlantUML Source Code</span>
               <span className="text-[10px] text-text-muted font-mono">{diagram.source.split('\n').length} lines</span>
             </div>
-            <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-accent-emerald selection:bg-accent-indigo/30">
+            <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-accent-emerald selection:bg-orange-500/30">
               {diagram.source}
             </pre>
           </div>
@@ -142,7 +142,7 @@ export function DiagramPane({
         <div className="rounded-xl border border-line bg-bg-primary p-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-text-primary">
-              <Lightning size={13} weight="fill" className="text-accent-amber" />
+              <Lightning size={13} weight="fill" className="text-amber-400" />
               <span>Project Alternate Views</span>
             </p>
             <span className="text-[10px] text-accent-emerald font-medium">0 LLM calls (cached AST)</span>
@@ -159,8 +159,8 @@ export function DiagramPane({
                   onClick={() => onSwitchView(model.id)}
                   className={`rounded-md border px-2 py-1 text-[11px] font-medium transition ${
                     isCurrent
-                      ? 'border-accent-indigo bg-accent-indigo/15 text-accent-indigo cursor-default'
-                      : 'border-line bg-bg-secondary text-text-secondary hover:border-line-hover hover:bg-bg-card-hover hover:text-text-primary disabled:opacity-40'
+                      ? 'border-orange-500 bg-orange-500/15 text-orange-400 cursor-default font-semibold'
+                      : 'border-line bg-bg-secondary text-text-secondary hover:border-orange-500/30 hover:bg-bg-card-hover hover:text-text-primary disabled:opacity-40'
                   }`}
                 >
                   {switching === model.id ? 'synthesizing…' : model.name.replace(/ Diagram$/, '')}

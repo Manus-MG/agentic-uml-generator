@@ -24,19 +24,19 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
     if (!catalogue) return [];
     return [
       {
-        title: 'Structure Diagrams',
+        title: 'Structure diagrams',
         icon: SquaresFour,
         badge: 'What the system is',
         items: catalogue.categories.structure.items,
       },
       {
-        title: 'Behavior Diagrams',
+        title: 'Behavior diagrams',
         icon: Pulse,
         badge: 'What the system does',
         items: catalogue.categories.behavior.items,
       },
       {
-        title: 'Interaction Diagrams',
+        title: 'Interaction diagrams',
         icon: TreeStructure,
         badge: 'Message flows & timing',
         items: catalogue.categories.interaction.items,
@@ -65,7 +65,7 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
   if (!catalogue) {
     return (
       <div className="flex items-center gap-2 py-4 text-xs text-text-muted">
-        <Cpu size={14} className="animate-spin text-accent-indigo" /> Loading UML 2.x catalogue…
+        <Cpu size={14} className="animate-spin text-accent-orange" /> Loading UML 2.x catalogue…
       </div>
     );
   }
@@ -93,7 +93,7 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
           <button
             type="button"
             onClick={() => applyPreset(['sequence', 'component', 'class'])}
-            className="flex items-center gap-1 rounded-md border border-line bg-bg-card px-2 py-1 text-[11px] text-accent-indigo hover:border-accent-indigo/40 hover:bg-accent-indigo/10"
+            className="flex items-center gap-1 rounded-sm border border-line-active/30 bg-accent-orange/10 px-2 py-1 text-[11px] text-accent-orange hover:border-line-active/50 font-medium"
           >
             <Sparkle size={12} weight="fill" /> Recommended (3)
           </button>
@@ -101,7 +101,7 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
           <button
             type="button"
             onClick={() => applyPreset(catalogue.categories.structure.items.map((m) => m.id))}
-            className="rounded-md border border-line bg-bg-card px-2 py-1 text-[11px] text-text-secondary hover:border-accent-indigo/40 hover:text-text-primary"
+            className="rounded-sm border border-line bg-bg-card px-2 py-1 text-[11px] text-text-secondary hover:border-line-hover hover:text-text-primary"
           >
             Structure (7)
           </button>
@@ -114,7 +114,7 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
                 ...catalogue.categories.interaction.items.map((m) => m.id),
               ])
             }
-            className="rounded-md border border-line bg-bg-card px-2 py-1 text-[11px] text-text-secondary hover:border-accent-indigo/40 hover:text-text-primary"
+            className="rounded-sm border border-line bg-bg-card px-2 py-1 text-[11px] text-text-secondary hover:border-line-hover hover:text-text-primary"
           >
             Behavior (7)
           </button>
@@ -122,7 +122,7 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
           <button
             type="button"
             onClick={() => applyPreset(allIds)}
-            className="rounded-md border border-line bg-bg-card px-2 py-1 text-[11px] text-text-secondary hover:border-accent-indigo/40 hover:text-text-primary"
+            className="rounded-sm border border-line bg-bg-card px-2 py-1 text-[11px] text-text-secondary hover:border-line-hover hover:text-text-primary"
           >
             All 14
           </button>
@@ -131,7 +131,7 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
             <button
               type="button"
               onClick={() => onChange([])}
-              className="rounded-md px-1.5 py-1 text-[11px] text-text-muted hover:text-accent-rose"
+              className="rounded-sm px-1.5 py-1 text-[11px] text-text-muted hover:text-accent-rose"
             >
               Clear
             </button>
@@ -146,7 +146,7 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter diagrams…"
-            className="w-full rounded-md border border-line bg-bg-primary py-1.5 pr-6 pl-7 text-xs text-text-primary placeholder:text-text-muted focus:border-accent-indigo focus:outline-none"
+            className="w-full rounded-sm border border-line bg-bg-primary py-1.5 pr-6 pl-7 text-xs text-text-primary placeholder:text-text-muted focus:border-line-active focus:outline-none"
           />
           {search && (
             <button
@@ -166,10 +166,10 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
           const Icon = group.icon;
           return (
             <div key={group.title} className="space-y-1.5">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-text-muted uppercase">
-                <Icon size={13} weight="bold" className="text-accent-indigo" />
+              <div className="flex items-center gap-1.5 text-[11px] font-mono font-semibold tracking-wider text-text-muted uppercase">
+                <Icon size={13} weight="bold" className="text-accent-orange" />
                 <span>{group.title}</span>
-                <span className="font-normal text-text-muted/70">({group.badge})</span>
+                <span className="font-normal normal-case text-text-muted/70">({group.badge})</span>
               </div>
 
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
@@ -181,9 +181,9 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
                       type="button"
                       title={item.summary}
                       onClick={() => toggle(item.id)}
-                      className={`group relative flex flex-col items-start rounded-lg border p-2 text-left transition-all ${
+                      className={`group relative flex flex-col items-start rounded-sm border p-2 text-left transition-colors ${
                         isSelected
-                          ? 'border-accent-indigo bg-accent-indigo/15 text-text-primary ring-1 ring-accent-indigo/30'
+                          ? 'border-line-active bg-accent-orange/10 text-text-primary'
                           : 'border-line bg-bg-secondary text-text-secondary hover:border-line-hover hover:bg-bg-card-hover hover:text-text-primary'
                       }`}
                     >
@@ -192,9 +192,9 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
                           {item.name.replace(/ Diagram$/, '')}
                         </span>
                         <span
-                          className={`flex size-3.5 shrink-0 items-center justify-center rounded transition-colors ${
+                          className={`flex size-3.5 shrink-0 items-center justify-center rounded-[2px] transition-colors ${
                             isSelected
-                              ? 'bg-accent-indigo text-white'
+                              ? 'bg-accent-orange text-bg-primary'
                               : 'border border-line group-hover:border-text-muted'
                           }`}
                         >
@@ -215,5 +215,3 @@ export function DiagramTypePicker({ catalogue, selected, onChange }: DiagramType
     </div>
   );
 }
-
-

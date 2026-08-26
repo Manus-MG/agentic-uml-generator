@@ -100,14 +100,12 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
 
   if (diagram.status === 'projected') {
     return (
-      <div className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-xl border border-line bg-bg-secondary p-8 text-center">
-        <div className="relative flex size-12 items-center justify-center rounded-xl bg-accent-indigo/10 text-accent-indigo">
-          <CircleNotch size={26} className="animate-spin text-accent-indigo" />
-        </div>
+      <div className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-sm border border-line bg-bg-secondary p-8 text-center">
+        <CircleNotch size={24} className="animate-spin text-accent-orange" />
         <div>
-          <p className="text-sm font-semibold text-text-primary">Rendering Diagram via PlantUML…</p>
+          <p className="text-sm font-semibold text-text-primary">Rendering via PlantUML…</p>
           <p className="mt-1 text-xs text-text-muted">
-            AST slice has been synthesized. Compiling vector output.
+            Model slice synthesized. Compiling vector output.
           </p>
         </div>
       </div>
@@ -118,14 +116,14 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
     <div className="flex flex-col gap-3">
       {/* Floating Canvas Control Toolbar */}
       {src && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-bg-primary px-3 py-1.5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-line bg-bg-primary px-3 py-1.5">
           {/* Zoom Controls */}
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={handleZoomIn}
               title="Zoom In"
-              className="rounded p-1 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+              className="rounded-sm p-1 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
             >
               <MagnifyingGlassPlus size={15} />
             </button>
@@ -136,7 +134,7 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
               type="button"
               onClick={handleZoomOut}
               title="Zoom Out"
-              className="rounded p-1 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+              className="rounded-sm p-1 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
             >
               <MagnifyingGlassMinus size={15} />
             </button>
@@ -144,7 +142,7 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
               type="button"
               onClick={handleResetZoom}
               title="Reset View"
-              className="rounded p-1 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+              className="rounded-sm p-1 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
             >
               <ArrowCounterClockwise size={14} />
             </button>
@@ -155,8 +153,8 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
             <button
               type="button"
               onClick={() => setCanvasTheme((t) => (t === 'light' ? 'dark' : 'light'))}
-              title={`Switch to ${canvasTheme === 'light' ? 'Dark' : 'Light'} Canvas`}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+              title={`Switch to ${canvasTheme === 'light' ? 'dark' : 'light'} canvas`}
+              className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
             >
               {canvasTheme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
               <span className="text-[11px] capitalize">{canvasTheme}</span>
@@ -168,7 +166,7 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
               type="button"
               onClick={copySource}
               title="Copy PlantUML Code"
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+              className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
             >
               <Copy size={13} />
               <span className="text-[11px]">{copied ? 'Copied' : 'Copy PUML'}</span>
@@ -178,7 +176,7 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
               type="button"
               onClick={() => downloadImage(diagram.svg ? 'svg' : 'png')}
               title="Download Vector Graphic"
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+              className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
             >
               <DownloadSimple size={13} />
               <span className="text-[11px]">{diagram.svg ? 'SVG' : 'PNG'}</span>
@@ -187,8 +185,8 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
             <button
               type="button"
               onClick={() => setIsLightbox(true)}
-              title="Fullscreen Modal"
-              className="rounded p-1 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+              title="Fullscreen"
+              className="rounded-sm p-1 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
             >
               <ArrowsOut size={14} />
             </button>
@@ -204,8 +202,8 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          className={`relative min-h-[380px] max-h-[550px] overflow-hidden rounded-xl border border-line p-4 transition-colors ${
-            canvasTheme === 'dark' ? 'bg-[#0b0f19]' : 'bg-slate-100'
+          className={`relative min-h-[380px] max-h-[550px] overflow-hidden rounded-sm border border-line p-4 transition-colors ${
+            canvasTheme === 'dark' ? 'bg-[#0b0e13]' : 'bg-slate-100'
           } ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
         >
           <div
@@ -222,13 +220,13 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
               src={src}
               alt={`${diagram.type} diagram`}
               draggable={false}
-              className="max-h-[500px] select-none object-contain shadow-md"
+              className="max-h-[500px] select-none object-contain"
             />
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-line bg-bg-primary p-4">
-          <p className="mb-2 text-xs font-semibold text-text-muted">PlantUML Source Code:</p>
+        <div className="rounded-sm border border-line bg-bg-primary p-4">
+          <p className="mb-2 text-xs font-semibold text-text-muted">PlantUML source:</p>
           <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-text-secondary">
             {diagram.source}
           </pre>
@@ -237,7 +235,7 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
 
       {/* Syntax Error Box */}
       {diagram.valid === false && diagram.errors.length > 0 && (
-        <div className="rounded-xl border border-accent-rose/40 bg-accent-rose/10 p-3.5">
+        <div className="rounded-sm border border-accent-rose/40 border-l-2 border-l-accent-rose bg-accent-rose/[0.06] p-3.5">
           <p className="flex items-center gap-2 text-xs font-semibold text-accent-rose">
             <Warning size={15} weight="bold" />
             PlantUML syntax validation failed
@@ -264,15 +262,15 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
           {/* Lightbox Header */}
           <div className="flex items-center justify-between border-b border-line px-6 py-3 bg-bg-secondary">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-text-primary capitalize">{diagram.type} Diagram</span>
-              <span className="rounded bg-bg-tertiary px-2 py-0.5 text-xs text-text-muted">Fullscreen Studio</span>
+              <span className="font-semibold text-text-primary capitalize">{diagram.type} diagram</span>
+              <span className="rounded-sm bg-bg-tertiary px-2 py-0.5 text-xs text-text-muted">Fullscreen</span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setCanvasTheme((t) => (t === 'light' ? 'dark' : 'light'))}
-                className="flex items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+                className="flex items-center gap-1 rounded-sm border border-line px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
               >
                 {canvasTheme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
                 <span className="capitalize">{canvasTheme}</span>
@@ -281,7 +279,7 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
               <button
                 type="button"
                 onClick={() => downloadImage(diagram.svg ? 'svg' : 'png')}
-                className="flex items-center gap-1.5 rounded-lg border border-line bg-accent-indigo px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-indigo-hover"
+                className="flex items-center gap-1.5 rounded-sm border border-line-active/40 bg-accent-orange px-3 py-1.5 text-xs font-semibold text-bg-primary hover:bg-accent-orange-hover"
               >
                 <DownloadSimple size={14} /> Download {diagram.svg ? 'SVG' : 'PNG'}
               </button>
@@ -289,7 +287,7 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
               <button
                 type="button"
                 onClick={() => setIsLightbox(false)}
-                className="rounded-lg border border-line p-1.5 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+                className="rounded-sm border border-line p-1.5 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
               >
                 <ArrowsIn size={16} />
               </button>
@@ -302,7 +300,7 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             className={`flex flex-1 items-center justify-center overflow-hidden p-8 ${
-              canvasTheme === 'dark' ? 'bg-[#080c14]' : 'bg-slate-200'
+              canvasTheme === 'dark' ? 'bg-[#080b10]' : 'bg-slate-200'
             } ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
           >
             <div
@@ -316,7 +314,7 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
                 src={src}
                 alt={`${diagram.type} diagram`}
                 draggable={false}
-                className="max-h-[85vh] select-none object-contain shadow-2xl"
+                className="max-h-[85vh] select-none object-contain"
               />
             </div>
           </div>
@@ -325,5 +323,3 @@ export function DiagramView({ diagram }: { diagram: DiagramPayload }) {
     </div>
   );
 }
-
-

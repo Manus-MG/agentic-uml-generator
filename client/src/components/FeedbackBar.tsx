@@ -76,13 +76,13 @@ export function FeedbackBar({
   const activeTags = rating === 'down' ? QUICK_TAGS_DOWN : QUICK_TAGS_UP;
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-line bg-bg-primary p-3 shadow-inner">
+    <div className="flex flex-col gap-2 rounded-sm border border-line bg-bg-primary p-3">
       {/* Header and Rating Buttons */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-          <Sparkle size={14} weight="fill" className="text-accent-indigo" />
-          <span className="font-medium text-text-primary">RLHF Trainer Feedback:</span>
-          <span className="hidden text-text-muted sm:inline">(feeder for LangChain ART agent)</span>
+          <Sparkle size={14} weight="fill" className="text-accent-orange" />
+          <span className="font-medium text-text-primary">Feedback:</span>
+          <span className="hidden text-text-muted sm:inline">(feeds the RLHF trainer)</span>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -90,15 +90,15 @@ export function FeedbackBar({
             type="button"
             disabled={disabled}
             onClick={() => void submit('up')}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-semibold transition-colors ${
               rating === 'up'
-                ? 'border-accent-emerald bg-accent-emerald/20 text-accent-emerald ring-1 ring-accent-emerald/40'
+                ? 'border-accent-emerald/50 bg-accent-emerald/10 text-accent-emerald'
                 : 'border-line bg-bg-secondary text-text-secondary hover:border-accent-emerald/40 hover:bg-accent-emerald/10 hover:text-accent-emerald'
             } disabled:opacity-40`}
           >
             <ThumbsUp size={14} weight={rating === 'up' ? 'fill' : 'regular'} />
             <span>Accurate</span>
-            <span className="rounded bg-accent-emerald/20 px-1 py-0.2 text-[10px] text-accent-emerald font-mono">
+            <span className="rounded-sm bg-accent-emerald/15 px-1 py-0.5 text-[10px] text-accent-emerald font-mono">
               +1.0
             </span>
           </button>
@@ -107,15 +107,15 @@ export function FeedbackBar({
             type="button"
             disabled={disabled}
             onClick={() => void submit('down')}
-            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-semibold transition-colors ${
               rating === 'down'
-                ? 'border-accent-rose bg-accent-rose/20 text-accent-rose ring-1 ring-accent-rose/40'
+                ? 'border-accent-rose/50 bg-accent-rose/10 text-accent-rose'
                 : 'border-line bg-bg-secondary text-text-secondary hover:border-accent-rose/40 hover:bg-accent-rose/10 hover:text-accent-rose'
             } disabled:opacity-40`}
           >
             <ThumbsDown size={14} weight={rating === 'down' ? 'fill' : 'regular'} />
             <span>Flawed</span>
-            <span className="rounded bg-accent-rose/20 px-1 py-0.2 text-[10px] text-accent-rose font-mono">
+            <span className="rounded-sm bg-accent-rose/15 px-1 py-0.5 text-[10px] text-accent-rose font-mono">
               -1.0
             </span>
           </button>
@@ -131,7 +131,7 @@ export function FeedbackBar({
               key={tag}
               type="button"
               onClick={() => addTag(tag)}
-              className="rounded-md border border-line bg-bg-secondary px-2 py-0.5 text-[10px] text-text-secondary transition hover:border-accent-indigo/40 hover:bg-accent-indigo/10 hover:text-text-primary"
+              className="rounded-sm border border-line bg-bg-secondary px-2 py-0.5 text-[10px] text-text-secondary transition hover:border-line-active/40 hover:bg-accent-orange/10 hover:text-accent-orange"
             >
               + {tag}
             </button>
@@ -150,7 +150,7 @@ export function FeedbackBar({
             }
           }}
           placeholder="Detailed critique or architectural reason (optional)…"
-          className="flex-1 rounded-lg border border-line bg-bg-secondary px-3 py-1.5 text-xs text-text-primary outline-none placeholder:text-text-muted focus:border-accent-indigo"
+          className="flex-1 rounded-sm border border-line bg-bg-secondary px-3 py-1.5 text-xs text-text-primary outline-none placeholder:text-text-muted focus:border-line-active"
         />
 
         {rating && (
@@ -158,14 +158,14 @@ export function FeedbackBar({
             type="button"
             disabled={disabled}
             onClick={() => void submit(rating)}
-            className="rounded-lg bg-accent-indigo px-3 py-1.5 text-xs font-medium text-white transition hover:bg-accent-indigo-hover"
+            className="rounded-sm bg-accent-orange px-3 py-1.5 text-xs font-semibold text-bg-primary transition hover:bg-accent-orange-hover"
           >
-            Save Note
+            Save note
           </button>
         )}
 
         {state === 'saving' && (
-          <span className="flex items-center gap-1 text-xs text-accent-indigo">
+          <span className="flex items-center gap-1 text-xs text-accent-orange">
             <CircleNotch size={12} className="animate-spin" /> saving…
           </span>
         )}

@@ -60,7 +60,7 @@ export function App() {
   }, [displayTurn, activeType]);
 
   const activeSessionTitle = useMemo(() => {
-    return sessions.find((s) => s.sessionId === activeId)?.title ?? 'New Architecture Session';
+    return sessions.find((s) => s.sessionId === activeId)?.title ?? 'New Session';
   }, [sessions, activeId]);
 
   useEffect(() => {
@@ -211,67 +211,67 @@ export function App() {
 
       {/* Center Main Workstation */}
       <main className="flex min-w-0 flex-1 flex-col bg-bg-primary">
-        {/* Studio Top Header */}
+        {/* Top Header */}
         <header className="flex items-center justify-between border-b border-line px-4 py-2.5 bg-bg-secondary">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setSidebarOpen((s) => !s)}
-              title={sidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
-              className="rounded p-1 text-text-muted hover:bg-bg-tertiary hover:text-text-primary"
+              title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+              className="rounded-sm p-1 text-text-muted hover:bg-bg-tertiary hover:text-text-primary"
             >
               <SidebarSimple size={16} weight={sidebarOpen ? 'fill' : 'regular'} />
             </button>
 
-            <div className="flex size-7 items-center justify-center rounded-lg bg-accent-indigo text-white shadow-sm">
-              <SquaresFour size={16} weight="bold" />
+            <div className="flex size-7 items-center justify-center rounded-sm border border-line-active bg-accent-orange text-bg-primary">
+              <SquaresFour size={15} weight="bold" />
             </div>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="truncate text-xs font-bold text-text-primary">
+                <h1 className="truncate text-xs font-semibold text-text-primary">
                   {activeSessionTitle}
                 </h1>
                 {displayTurn?.version !== null && displayTurn?.version !== undefined && (
-                  <span className="rounded bg-accent-indigo/15 border border-accent-indigo/30 px-1.5 py-0.2 text-[10px] font-mono text-accent-indigo">
+                  <span className="rounded-sm border border-line-active/40 bg-accent-orange/10 px-1.5 py-0.5 text-[10px] font-mono text-accent-orange">
                     v{displayTurn.version}
                   </span>
                 )}
               </div>
               <p className="truncate text-[10px] text-text-muted font-mono">
-                {activeId ? `Session ID: ${activeId}` : 'New session standby'}
+                {activeId ? `session · ${activeId}` : 'no session'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* User Profile Pill in Header */}
+            {/* User Profile in Header */}
             {user && (
               <button
                 type="button"
                 onClick={() => setUserModalOpen(true)}
-                title="Click to Switch User"
-                className="flex items-center gap-1.5 rounded-full border border-line bg-bg-primary px-2.5 py-1 text-[11px] text-text-secondary hover:border-accent-indigo/50 hover:text-text-primary transition"
+                title="Switch user"
+                className="flex items-center gap-1.5 rounded-sm border border-line bg-bg-primary px-2.5 py-1 text-[11px] text-text-secondary hover:border-line-hover hover:text-text-primary transition"
               >
-                <div className="flex size-4 items-center justify-center rounded-full bg-accent-indigo text-[9px] font-bold text-white">
+                <div className="flex size-4 items-center justify-center rounded-[2px] bg-accent-orange text-[9px] font-bold text-bg-primary">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="font-semibold text-text-primary">{user.name}</span>
+                <span className="font-medium text-text-primary">{user.name}</span>
                 <span className="text-[10px] font-mono text-text-muted">({user.userId})</span>
                 <UserSwitch size={12} className="text-text-muted ml-0.5" />
               </button>
             )}
 
-            <div className="hidden items-center gap-1.5 rounded-full border border-line bg-bg-primary px-2.5 py-1 text-[11px] text-text-muted sm:flex">
+            <div className="hidden items-center gap-1.5 rounded-sm border border-line bg-bg-primary px-2.5 py-1 text-[11px] font-mono text-text-muted sm:flex">
               <span className="size-1.5 rounded-full bg-accent-emerald" />
-              <span>Groq LLM + PlantUML</span>
+              <span className="uppercase tracking-wide">Groq · PlantUML</span>
             </div>
 
             <button
               type="button"
               onClick={() => setDiagramPaneOpen((d) => !d)}
-              title={diagramPaneOpen ? 'Hide Diagram Canvas' : 'Show Diagram Canvas'}
-              className="rounded p-1 text-text-muted hover:bg-bg-tertiary hover:text-text-primary xl:flex hidden"
+              title={diagramPaneOpen ? 'Hide diagram canvas' : 'Show diagram canvas'}
+              className="rounded-sm p-1 text-text-muted hover:bg-bg-tertiary hover:text-text-primary xl:flex hidden"
             >
               <SidebarSimple size={16} weight={diagramPaneOpen ? 'fill' : 'regular'} className="rotate-180" />
             </button>
@@ -279,7 +279,7 @@ export function App() {
         </header>
 
         {error && (
-          <div className="flex items-center justify-between gap-3 border-b border-accent-rose/30 bg-accent-rose/10 px-4 py-2">
+          <div className="flex items-center justify-between gap-3 border-b border-accent-rose/30 border-l-2 border-l-accent-rose bg-accent-rose/[0.06] px-4 py-2">
             <p className="flex items-center gap-2 text-xs text-accent-rose">
               <WarningCircle size={15} weight="bold" /> {error}
             </p>
@@ -337,4 +337,3 @@ export function App() {
 }
 
 export default App;
-

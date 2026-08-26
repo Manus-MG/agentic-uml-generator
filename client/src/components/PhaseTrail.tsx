@@ -15,11 +15,11 @@ import type { Phase } from '../hooks/useChat';
 
 const PIPELINE_STEPS = [
   { id: 'requirements', label: 'Requirements', icon: Sparkle, desc: 'Parsing architectural requirements' },
-  { id: 'csm', label: 'Canonical AST', icon: Cpu, desc: 'Synthesizing canonical system model' },
-  { id: 'patch', label: 'Patch Slice', icon: GitBranch, desc: 'Diffing and patching active slices' },
-  { id: 'plan', label: 'Slice Planner', icon: Stack, desc: 'Planning projection slices' },
-  { id: 'repair-csm', label: 'Model Repair', icon: Wrench, desc: 'Resolving integrity constraints' },
-  { id: 'repair-diagram', label: 'Syntax Repair', icon: ShieldCheck, desc: 'Fixing PlantUML syntax' },
+  { id: 'csm', label: 'Canonical model', icon: Cpu, desc: 'Synthesizing canonical system model' },
+  { id: 'patch', label: 'Patch slice', icon: GitBranch, desc: 'Diffing and patching active slices' },
+  { id: 'plan', label: 'Slice planner', icon: Stack, desc: 'Planning projection slices' },
+  { id: 'repair-csm', label: 'Model repair', icon: Wrench, desc: 'Resolving integrity constraints' },
+  { id: 'repair-diagram', label: 'Syntax repair', icon: ShieldCheck, desc: 'Fixing PlantUML syntax' },
   { id: 'render', label: 'Rendering', icon: FileCode, desc: 'Generating vector diagrams' },
 ];
 
@@ -58,28 +58,28 @@ export function PhaseTrail({
   const currentMeta = current ? getStepMeta(current.phase) : null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-bg-secondary/60 p-3 shadow-inner">
+    <div className="overflow-hidden rounded-sm border border-line bg-bg-secondary/60 p-3">
       {/* Active Phase Header with Live Timer */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div
-            className={`flex size-6 items-center justify-center rounded-md ${
+            className={`flex size-6 items-center justify-center rounded-sm ${
               running
-                ? 'bg-accent-indigo/20 text-accent-indigo'
-                : 'bg-accent-emerald/20 text-accent-emerald'
+                ? 'bg-accent-orange/10 text-accent-orange'
+                : 'bg-accent-emerald/10 text-accent-emerald'
             }`}
           >
             {running ? (
-              <CircleNotch size={14} className="animate-spin text-accent-indigo" />
+              <CircleNotch size={14} className="animate-spin" />
             ) : (
-              <Check size={14} weight="bold" className="text-accent-emerald" />
+              <Check size={14} weight="bold" />
             )}
           </div>
           <div>
             <p className="flex items-center gap-1.5 text-xs font-semibold text-text-primary">
-              <span>{running ? currentMeta?.label ?? 'Processing…' : 'Generation Complete'}</span>
+              <span>{running ? currentMeta?.label ?? 'Processing…' : 'Generation complete'}</span>
               {current?.detail && (
-                <span className="rounded bg-bg-tertiary px-1.5 py-0.5 font-mono text-[10px] text-accent-cyan">
+                <span className="rounded-sm bg-bg-tertiary px-1.5 py-0.5 font-mono text-[10px] text-accent-orange">
                   {current.detail}
                 </span>
               )}
@@ -92,8 +92,8 @@ export function PhaseTrail({
 
         <div className="flex items-center gap-2">
           {running && (
-            <span className="flex items-center gap-1 rounded-md border border-line bg-bg-primary/80 px-2 py-0.5 font-mono text-xs text-text-secondary">
-              <span className="size-1.5 animate-ping rounded-full bg-accent-indigo" />
+            <span className="flex items-center gap-1.5 rounded-sm border border-line bg-bg-primary/80 px-2 py-0.5 font-mono text-xs text-text-secondary">
+              <span className="size-1.5 rounded-full bg-accent-orange animate-blink" />
               {elapsed}s
             </span>
           )}
@@ -102,7 +102,7 @@ export function PhaseTrail({
 
       {/* Pipeline Sequence Badges */}
       {phases.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-line/60">
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-line">
           {phases.map((phase, index) => {
             const meta = getStepMeta(phase.phase);
             const isLast = index === phases.length - 1;
@@ -110,14 +110,14 @@ export function PhaseTrail({
             return (
               <div
                 key={index}
-                className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] transition-colors ${
+                className={`flex items-center gap-1 rounded-sm px-2 py-1 text-[10px] transition-colors ${
                   isLast && running
-                    ? 'border border-accent-indigo/40 bg-accent-indigo/15 text-accent-indigo font-medium'
-                    : 'border border-line/40 bg-bg-tertiary/40 text-text-muted'
+                    ? 'border border-line-active/40 bg-accent-orange/10 text-accent-orange font-medium'
+                    : 'border border-line bg-bg-tertiary/40 text-text-muted'
                 }`}
               >
                 {isLast && running ? (
-                  <CircleNotch size={11} className="animate-spin text-accent-indigo" />
+                  <CircleNotch size={11} className="animate-spin" />
                 ) : (
                   <CheckCircle size={12} weight="fill" className="text-accent-emerald/80" />
                 )}
@@ -133,5 +133,3 @@ export function PhaseTrail({
     </div>
   );
 }
-
-
