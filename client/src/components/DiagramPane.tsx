@@ -7,9 +7,7 @@ import {
   Stack,
 } from '@phosphor-icons/react';
 import { DiagramView } from './DiagramView';
-import { FeedbackBar } from './FeedbackBar';
 import { ModelDrawer } from './ModelDrawer';
-import type { KnownRating } from '../hooks/useFeedback';
 import type { DiagramPayload, DiagramTypesResponse } from '../types/uml';
 
 type Tab = 'diagram' | 'source' | 'model';
@@ -23,8 +21,6 @@ export function DiagramPane({
   onSwitchView,
   switching,
   lastSwitchCost,
-  knownRating,
-  onRated,
 }: {
   sessionId: string | null;
   diagram: DiagramPayload | null;
@@ -34,8 +30,6 @@ export function DiagramPane({
   onSwitchView: (type: string) => void;
   switching: string | null;
   lastSwitchCost: { type: string; llmCalls: number } | null;
-  knownRating?: KnownRating;
-  onRated: (diagramId: string, value: KnownRating) => void;
 }) {
   const [tab, setTab] = useState<Tab>('diagram');
 
@@ -125,19 +119,8 @@ export function DiagramPane({
         {tab === 'model' && <ModelDrawer sessionId={sessionId} version={version} />}
       </div>
 
-      {/* Footer RLHF and On-Demand View Switcher */}
+      {/* Footer On-Demand View Switcher */}
       <div className="space-y-3 border-t border-line bg-bg-secondary p-4">
-        {/* RLHF Feedback */}
-        {diagram.diagramId && (
-          <FeedbackBar
-            key={diagram.diagramId}
-            sessionId={sessionId}
-            diagram={diagram}
-            known={knownRating}
-            onRated={onRated}
-          />
-        )}
-
         {/* Zero-Cost Model Projection Selector */}
         <div className="rounded-xl border border-line bg-bg-primary p-3">
           <div className="mb-2 flex items-center justify-between">

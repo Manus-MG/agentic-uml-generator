@@ -14,7 +14,7 @@ Built with a **Canonical Software Model (CSM)** approach, deterministic projecto
 - **⚡ Deterministic Projectors & Low Latency**: Translates structured CSM data into valid PlantUML using type-safe deterministic TypeScript projectors, minimizing hallucinations and latency.
 - **🛡️ Self-Healing PlantUML Verification**: Compiles diagrams with PlantUML backend validation and automatically repairs syntax errors before returning results to the client.
 - **🔄 Multi-Turn Iterative Refinement**: Supports conversational updates, incremental prompt edits, and instant diagram view-switching without re-computing unchanged architecture state.
-- **🎯 ART & Reinforcement Learning (RL) Dataset Exporter**: Records full execution trajectories (prompts, completions, tool calls, reasoning steps, latencies) and exports feedback as JSONL for RLHF / DPO / GRPO fine-tuning.
+- **🎯 ART & Reinforcement Learning (RL) Dataset Exporter**: Records full execution trajectories (prompts, completions, tool calls, reasoning steps, latencies) and exports automatically-captured feedback as JSONL for RLHF / DPO / GRPO fine-tuning — no rating UI, the reward signal comes entirely from user behavior.
 - **📡 Real-Time SSE Pipeline Streaming**: Live status events streamed to the UI as extraction, projection, validation, and rendering steps execute.
 - **🎨 Interactive Canvas & Studio UI**: Modern React frontend with user switcher, pan, zoom, full-screen mode, PlantUML code preview, instant copy, and PNG/SVG export capabilities.
 
@@ -60,8 +60,8 @@ flowchart TD
     FreshWorkspace --> UserFeedback
     ExistingWorkspace --> UserFeedback
     
-    UserFeedback["3. Feedback Scenario:<br/>User rates diagrams (👍 / 👎 + comments)"]
-    UserFeedback --> LogTrajectory["Persist feedback mapped to session & version"]
+    UserFeedback["3. Feedback Scenario:<br/>Pipeline observes what the user does next"]
+    UserFeedback --> LogTrajectory["Persist automatic signal mapped to session & version"]
     LogTrajectory --> ExportRL["Export JSONL Trajectory for ART / RLHF fine-tuning"]
 ```
 
@@ -74,8 +74,8 @@ flowchart TD
    - Past architecture sessions and rendered diagrams are loaded in the sidebar.
    - Subsequent prompts compute incremental **CSM Patches / Diffs**, reusing unchanged diagram slices.
 3. **Feedback & Continuous Improvement**:
-   - Users rate diagrams with thumbs up/down and optional comments.
-   - Ratings are tied to exact LLM trajectories and exported for RL / ART model training.
+   - There is no rating widget — the pipeline reads feedback out of behavior instead: a diagram that gets reworked by the next revision is an implicit negative, one that survives revision after revision untouched is an implicit positive, and render quality (clean vs. needed repair vs. failed) is a third, purely mechanical signal. See `server/src/agent/implicitSignals.ts`.
+   - Every signal is tied to the exact LLM trajectory that produced the content and exported for RL / ART model training.
 
 ---
 
@@ -109,7 +109,7 @@ flowchart TD
     DiagramAssets --> DB[("MongoDB Atlas (Thread, Diagram, CSM)")]
     DiagramAssets --> User
     
-    User -->|"3. User Feedback / Rating"| FeedbackController["Feedback Service"]
+    Pipeline -->|"3. Revision rework / carry-forward streak / render quality"| FeedbackController["Implicit Signal Capture"]
     FeedbackController --> TrajectoryStore[("Trajectory & Feedback Store")]
     TrajectoryStore --> ExportRL["Feedback Dataset Export (JSONL)"]
     ExportRL --> ART["LangChain ART / RLHF / DPO Trainer"]
@@ -122,8 +122,8 @@ flowchart TD
 ### Frontend (`/client`)
 - **Framework**: React 19 + TypeScript + Vite + TailwindCSS
 - **Icons**: Phosphor Icons
-- **State & Hooks**: `useUser`, `useSessions`, `useChat`, `useFeedback`, `useHealth`, `useDiagramTypes`
-- **Features**: User identification modal, user switcher, interactive zoom/pan canvas, real-time SSE progress trail, PlantUML code preview, export utilities, feedback ratings
+- **State & Hooks**: `useUser`, `useSessions`, `useChat`, `useHealth`, `useDiagramTypes`
+- **Features**: User identification modal, user switcher, interactive zoom/pan canvas, real-time SSE progress trail, PlantUML code preview, export utilities. No rating UI — feedback is captured automatically server-side.
 
 ### Backend (`/server`)
 - **Runtime**: Node.js (ES Modules) + Express 5 + TypeScript
@@ -144,7 +144,7 @@ umlgenerator/
 ├── client/                     # Frontend Application
 │   ├── src/
 │   │   ├── components/         # UI Components (UserModal, SessionSidebar, Composer, DiagramView, etc.)
-│   │   ├── hooks/              # Custom React Hooks (useUser, useSessions, useChat, useFeedback, etc.)
+│   │   ├── hooks/              # Custom React Hooks (useUser, useSessions, useChat, etc.)
 │   │   ├── services/           # API and SSE client services
 │   │   ├── types/              # Frontend TypeScript contracts
 │   │   ├── App.tsx             # Main UML Studio Application & Canvas
@@ -289,19 +289,28 @@ npm run test:watch
 - `DELETE /api/sessions/:sessionId` — Deletes session and associated diagrams.
 
 ### Feedback & Reinforcement Learning (RL)
-- `POST /api/feedback` — Submits rating (`thumbs_up` / `thumbs_down`) and optional corrective comments.
-- `GET /api/feedback?sessionId=...` — Returns ratings given in a session.
 - `GET /api/feedback/export` — Streams JSONL dataset with full trajectories and scalar rewards for LangChain ART / GRPO fine-tuning.
+
+There is no submit/list endpoint — feedback isn't something a client posts. The pipeline writes it itself as a byproduct of running a turn (see below).
 
 ---
 
 ## 🧠 Reinforcement Learning & ART Dataset Export
 
-Every generation run logs its trajectory into MongoDB:
+There is no rating widget in this app. Every diagram's reward comes from three signals the pipeline records automatically, with zero user input (`server/src/agent/implicitSignals.ts`):
+
+| Signal | Fires when | Reward |
+| :--- | :--- | :--- |
+| `render-quality` | Every render: invalid PlantUML, needed auto-repair, or rendered clean | −0.4 / up to −0.2 / +0.1 |
+| `revision-rework` | A later revision touches this diagram's CSM slices — bigger, faster corrections score more negative | up to −0.5 |
+| `survived-carry-forward` | The user keeps revising *other* things and this diagram type rides `carriedForward` untouched — streak grows, reward diminishes (log2) | up to +0.4 |
+
+A diagram can carry more than one signal at once (e.g. rendered clean, then reworked two turns later); they're combined (`Σ reward × confidence`, clamped to [−1, 1]) before being applied to a turn's reward — see `exportFeedback` in `server/src/controllers/feedbackController.ts`.
+
+Every generation run also logs its trajectory into MongoDB:
 - System and user prompts
 - Model reasoning and completions
 - Output schemas and latency metrics
-- Applied reward signals (+1.0 for thumbs up, -1.0 for thumbs down, averaged for shared CSM extraction turns)
 
 To export the training set:
 ```bash

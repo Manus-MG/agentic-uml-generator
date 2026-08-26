@@ -3,9 +3,6 @@ import type {
   CanonicalModelResponse,
   DeleteSessionResponse,
   DiagramTypesResponse,
-  FeedbackListResponse,
-  FeedbackResponse,
-  FeedbackSubmission,
   GenerateResponse,
   ListDiagramsResponse,
   RunEvent,
@@ -163,19 +160,7 @@ export const api = {
     );
   },
 
-  /** A rating on one diagram. `diagramId` differs per version, so read it off the payload. */
-  submitFeedback(payload: FeedbackSubmission): Promise<FeedbackResponse> {
-    return json<FeedbackResponse>(`${API_BASE_URL}/feedback`, postInit(payload));
-  },
-
-  /** Ratings already given in this session, so a reload does not forget them. */
-  listFeedback(sessionId: string): Promise<FeedbackListResponse> {
-    return json<FeedbackListResponse>(
-      `${API_BASE_URL}/feedback?sessionId=${encodeURIComponent(sessionId)}`,
-    );
-  },
-
-  /** The JSONL the ART/GRPO trainer reads. */
+  /** The JSONL the ART/GRPO trainer reads. Reward comes entirely from automatic signals now. */
   getFeedbackExportUrl(sessionId?: string): string {
     return sessionId
       ? `${API_BASE_URL}/feedback/export?sessionId=${encodeURIComponent(sessionId)}`

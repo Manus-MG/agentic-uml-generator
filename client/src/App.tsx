@@ -12,7 +12,6 @@ import { SessionSidebar } from './components/SessionSidebar';
 import { UserModal } from './components/UserModal';
 import { useChat } from './hooks/useChat';
 import { useDiagramTypes } from './hooks/useDiagramTypes';
-import { useFeedback } from './hooks/useFeedback';
 import { useHealth } from './hooks/useHealth';
 import { useSessions } from './hooks/useSessions';
 import { useUser } from './hooks/useUser';
@@ -25,7 +24,6 @@ export function App() {
   const { catalogue, displayName } = useDiagramTypes();
   const { health, status } = useHealth();
   const { turns, busy, send, stop, addView } = useChat(activeId, user?.userId);
-  const { known: knownRatings, record: recordRating } = useFeedback(activeId);
 
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['sequence', 'component', 'class']);
@@ -328,8 +326,6 @@ export function App() {
           onSwitchView={(type) => void handleSwitchView(type)}
           switching={switching}
           lastSwitchCost={lastSwitchCost}
-          knownRating={activeDiagram?.diagramId ? knownRatings.get(activeDiagram.diagramId) : undefined}
-          onRated={recordRating}
         />
       )}
     </div>

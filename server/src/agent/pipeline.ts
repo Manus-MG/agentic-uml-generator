@@ -5,11 +5,17 @@ import { badRequest, notFound } from '../lib/httpError.js';
 import { autoFix, render, renderSvg, validate } from '../plantuml/index.js';
 import { CsmVersion } from '../models/CsmVersion.js';
 import { Diagram } from '../models/Diagram.js';
+import { Feedback } from '../models/Feedback.js';
 import { Thread } from '../models/Thread.js';
 import { Trajectory } from '../models/Trajectory.js';
 import { resolveDiagramTypes } from './aliases.js';
 import { formatIssues, validateCsm, type IntegrityIssue } from './csmIntegrity.js';
 import { DIAGRAM_SPECS, missingSlices, type DiagramSpec } from './diagramRegistry.js';
+import {
+  renderQualitySignal,
+  revisionReworkSignal,
+  survivedCarryForwardSignal,
+} from './implicitSignals.js';
 import { callStructured, type StructuredCallResult } from './llm/groq.js';
 import {
   ARCHITECT_SYSTEM,
@@ -266,6 +272,61 @@ async function* repairIntegrity(
   return { csm: next, report };
 }
 
+/**
+ * Records one automatic feedback signal. Best-effort: a write failure here
+ * must never break the turn the user is waiting on, so it is logged and
+ * swallowed rather than thrown.
+ */
+async function recordSignal(input: {
+  sessionId: string;
+  diagramId?: string | null;
+  diagramType: string;
+  version: number;
+  signal: 'render-quality' | 'revision-rework';
+  reward: number;
+  confidence: number;
+  evidence: unknown;
+}): Promise<void> {
+  try {
+    await Feedback.findOneAndUpdate(
+      { sessionId: input.sessionId, diagramId: input.diagramId, signal: input.signal },
+      {
+        $set: {
+          version: input.version,
+          diagramType: input.diagramType,
+          diagramId: input.diagramId,
+          reward: input.reward,
+          confidence: input.confidence,
+          evidence: input.evidence,
+        },
+      },
+      { upsert: true },
+    );
+  } catch (err) {
+    console.warn(`[implicit-feedback] ${input.signal} write failed: ${(err as Error).message}`);
+  }
+}
+
+/**
+ * Increments the "survived carry-forward" streak for a diagram type and
+ * rewrites its reward from the new streak length. One document per
+ * (session, diagramType) — bounded write volume, not one per turn.
+ */
+async function recordSurvival(input: { sessionId: string; diagramType: string; version: number }): Promise<void> {
+  try {
+    const doc = await Feedback.findOneAndUpdate(
+      { sessionId: input.sessionId, diagramType: input.diagramType, signal: 'survived-carry-forward' },
+      { $inc: { 'evidence.streak': 1 }, $set: { version: input.version } },
+      { upsert: true, returnDocument: 'after' },
+    );
+    const streak = (doc?.evidence as { streak?: number } | null)?.streak ?? 1;
+    const { reward, confidence } = survivedCarryForwardSignal(streak);
+    await Feedback.updateOne({ _id: doc!._id }, { $set: { reward, confidence } });
+  } catch (err) {
+    console.warn(`[implicit-feedback] survived-carry-forward write failed: ${(err as Error).message}`);
+  }
+}
+
 /** Projects, lints, repairs and renders one diagram. Yields the source before the render starts. */
 async function* renderDiagram(
   pipeline: Pipeline,
@@ -366,12 +427,22 @@ async function* renderDiagram(
           renderErrors: [],
           repairAttempts,
           carriedForward: false,
+          originVersion: ctx.version,
           expiresAt: new Date(Date.now() + WORKING_TTL_MS),
         },
       },
       { upsert: true, returnDocument: 'after' },
     );
     payload.diagramId = String(doc!._id);
+    void recordSignal({
+      sessionId: ctx.sessionId,
+      diagramId: payload.diagramId,
+      diagramType: spec.id,
+      version: ctx.version,
+      signal: 'render-quality',
+      ...renderQualitySignal(true, repairAttempts),
+      evidence: { valid: true, repairAttempts },
+    });
   } else {
     const doc = await Diagram.findOneAndUpdate(
       { sessionId: ctx.sessionId, version: ctx.version, type: spec.id },
@@ -384,12 +455,22 @@ async function* renderDiagram(
           renderErrors: result.errors,
           repairAttempts,
           carriedForward: false,
+          originVersion: ctx.version,
           expiresAt: new Date(Date.now() + WORKING_TTL_MS),
         },
       },
       { upsert: true, returnDocument: 'after' },
     );
     payload.diagramId = String(doc!._id);
+    void recordSignal({
+      sessionId: ctx.sessionId,
+      diagramId: payload.diagramId,
+      diagramType: spec.id,
+      version: ctx.version,
+      signal: 'render-quality',
+      ...renderQualitySignal(false, repairAttempts),
+      evidence: { valid: false, repairAttempts, renderErrors: result.errors },
+    });
   }
 
   yield { type: 'diagram', diagram: payload };
@@ -426,6 +507,7 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<RunEvent, void>
   let csm: Csm;
   let rationale: string | null = null;
   let changedSlices = new Set<CsmSlice>();
+  const touchedIds: string[] = [];
   let requirements = '';
 
   if (mode === 'generate') {
@@ -516,6 +598,28 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<RunEvent, void>
       const applied = applyPatch(csm, toCsmPatch(name, value, plan.rationale));
       csm = applied.csm;
       for (const slice of applied.changedSlices) changedSlices.add(slice);
+      touchedIds.push(...applied.touchedIds);
+    }
+  }
+
+  // Automatic negative signal: whatever this revision just changed is exactly
+  // what the user implicitly judged wrong about the previous diagrams built
+  // from those slices. No rating asked — the correction itself is the signal.
+  if (mode === 'revise' && thread) {
+    const latencyMs = Date.now() - (thread.turns.at(-1)?.at.getTime() ?? thread.updatedAt.getTime());
+    const prevDiagrams = await Diagram.find({ sessionId, version: thread.currentVersion });
+    for (const d of prevDiagrams) {
+      const spec = DIAGRAM_SPECS[d.type];
+      if (!spec || !spec.requiredSlices.some((slice) => changedSlices.has(slice))) continue;
+      void recordSignal({
+        sessionId,
+        diagramId: String(d._id),
+        diagramType: d.type,
+        version: d.originVersion,
+        signal: 'revision-rework',
+        ...revisionReworkSignal(touchedIds.length, latencyMs),
+        evidence: { changedSlices: [...changedSlices], touchedIds, rationale, latencyMs },
+      });
     }
   }
 
@@ -561,11 +665,16 @@ export async function* runTurn(input: TurnInput): AsyncGenerator<RunEvent, void>
               renderErrors: [],
               repairAttempts: 0,
               carriedForward: true,
+              originVersion: prior.originVersion,
               expiresAt,
             },
           },
           { upsert: true, returnDocument: 'after' },
         );
+        // Automatic positive signal: the user revised other things and left
+        // this diagram type alone again. The longer that streak, the stronger
+        // the implicit approval.
+        void recordSurvival({ sessionId, diagramType: spec.id, version: prior.originVersion });
         yield {
           type: 'diagram',
           diagram: {

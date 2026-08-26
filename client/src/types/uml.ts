@@ -243,38 +243,6 @@ export interface CanonicalModelResponse {
 
 /* ----------------------------------------------------------------- feedback */
 
-export type Rating = 'up' | 'down';
-
-export interface FeedbackSubmission {
-  sessionId: string;
-  diagramId: string;
-  rating: Rating;
-  comments?: string | null;
-}
-
-export interface FeedbackEntry {
-  feedbackId: string;
-  diagramId: string;
-  diagramType: string;
-  version: number;
-  rating: Rating;
-  reward: number;
-  comments: string | null;
-  at: string;
-}
-
-export interface FeedbackListResponse {
-  success: boolean;
-  sessionId: string;
-  total: number;
-  feedback: FeedbackEntry[];
-}
-
-export interface FeedbackResponse {
-  success: boolean;
-  feedbackId: string;
-  sessionId: string;
-  diagramType: string;
-  version: number;
-  reward: number;
-}
+// Feedback is captured automatically by the pipeline now — no client-facing
+// rating shapes to mirror here. See server/src/models/Feedback.ts and
+// server/src/agent/implicitSignals.ts.

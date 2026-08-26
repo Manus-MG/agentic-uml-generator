@@ -81,8 +81,6 @@ export function createApp(): Application {
         'GET  /api/sessions/:sessionId/model',
         'DELETE /api/sessions/:sessionId',
         'GET  /api/diagram/:session/:filename',
-        'POST /api/feedback',
-        'GET  /api/feedback?sessionId=...',
         'GET  /api/feedback/export',
       ],
     });

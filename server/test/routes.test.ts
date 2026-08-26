@@ -259,52 +259,35 @@ describe.skipIf(!hasMongo)('API routes', () => {
     );
   });
 
-  it('records feedback and exports it as ART-shaped JSONL', async () => {
-    const res = await post('/api/feedback', {
-      sessionId: SESSION,
-      diagramId,
-      rating: 'thumbs_up',
-      comments: 'accurate',
-    });
-    expect(res.status).toBe(200);
-    expect((await res.json()).reward).toBe(1);
-
+  it('exports automatically-captured signals as ART-shaped JSONL', async () => {
+    // No rating was ever submitted — every diagram rendered at least once
+    // above, which is enough on its own: render-quality is unconditional.
+    // (The fake PlantUML backend always validates on the first try, so no
+    // repair call — the one LLM call tagged with a specific diagramType —
+    // ever runs; every exported line here is a turn-mean over shared calls.)
     const exported = await get(`/api/feedback/export?sessionId=${SESSION}`);
     expect(exported.status).toBe(200);
 
     const lines = (await exported.text()).trim().split('\n').filter(Boolean);
     expect(lines.length).toBeGreaterThan(0);
 
-    const first = JSON.parse(lines[0]!);
+    const parsed = lines.map((l) => JSON.parse(l));
+    const first = parsed[0]!;
     expect(Array.isArray(first.messages)).toBe(true);
     expect(first.messages[0].role).toBe('system');
     expect(typeof first.completion).toBe('string');
-    expect(first.reward).toBe(1);
+    expect(typeof first.reward).toBe('number');
+    // render-quality alone is a mild positive (+0.1 * 0.3 confidence) on a
+    // clean render, so a turn where nothing needed repair skews positive.
+    expect(first.reward).toBeGreaterThan(0);
     expect(first.metadata.sessionId).toBe(SESSION);
     expect(first.metadata.step).toBeTruthy();
+    expect(first.metadata.rewardBasis).toBe('turn-mean');
   });
 
-  it('reads back the ratings a session already has', async () => {
-    const res = await get(`/api/feedback?sessionId=${SESSION}`);
-    expect(res.status).toBe(200);
-
-    const body = await res.json();
-    expect(body.total).toBeGreaterThan(0);
-    expect(body.feedback[0].diagramId).toBe(diagramId);
-    expect(body.feedback[0].rating).toBe('up');
-  });
-
-  it('refuses a feedback listing with no session', async () => {
-    expect((await get('/api/feedback')).status).toBe(400);
-  });
-
-  it('rejects feedback on a diagram that is not in the session', async () => {
-    const res = await post('/api/feedback', {
-      sessionId: 'someone-elses-session',
-      diagramId,
-      rating: 'up',
-    });
-    expect(res.status).toBe(404);
+  it('no longer exposes a feedback submission endpoint — behavior is the feedback', async () => {
+    expect((await post('/api/feedback', { sessionId: SESSION, diagramId, rating: 'up' })).status).toBe(404);
+    expect((await get(`/api/feedback?sessionId=${SESSION}`)).status).toBe(404);
   });
 
   it('clears working state but keeps the training data', async () => {

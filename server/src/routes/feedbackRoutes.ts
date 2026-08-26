@@ -1,14 +1,11 @@
 import { Router } from 'express';
-import { exportFeedback, listFeedback, submitFeedback } from '../controllers/feedbackController.js';
+import { exportFeedback } from '../controllers/feedbackController.js';
 
 const router = Router();
 
-router.post('/', submitFeedback);
-
-// Ratings already given, so a reload does not forget them. Requires ?sessionId=.
-router.get('/', listFeedback);
-
 // The RL training set. Optional ?sessionId= narrows it to one conversation.
+// Feedback itself is captured automatically by the pipeline (see
+// server/src/agent/implicitSignals.ts) — there is nothing left for a client to submit.
 router.get('/export', exportFeedback);
 
 export default router;

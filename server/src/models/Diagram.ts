@@ -12,6 +12,13 @@ const DiagramSchema = new Schema(
   {
     sessionId: { type: String, required: true, index: true },
     version: { type: Number, required: true },
+    /**
+     * The version that actually rendered this content. Equal to `version` for
+     * a real render; copied forward unchanged across carry-forwards so a
+     * signal about this diagram can still be joined to the `Trajectory` rows
+     * that produced it, which a purely-carried-forward version has none of.
+     */
+    originVersion: { type: Number, required: true },
     /** Canonical diagram id, e.g. 'sequence', 'use-case'. */
     type: { type: String, required: true },
     source: { type: String, required: true },

@@ -1,122 +1,33 @@
 import type { Request, Response } from 'express';
-import { z } from 'zod';
-import { Diagram } from '../models/Diagram.js';
 import { Feedback } from '../models/Feedback.js';
 import { Trajectory } from '../models/Trajectory.js';
-import { badRequest, notFound } from '../lib/httpError.js';
 
-/** Supports both short ('up'/'down') and descriptive ('thumbs_up'/'thumbs_down') rating values. */
-const FeedbackBody = z
-  .object({
-    sessionId: z.string().min(1).optional(),
-    session_id: z.string().min(1).optional(),
-    diagramId: z.string().min(1),
-    rating: z.enum(['up', 'down', 'thumbs_up', 'thumbs_down']),
-    comments: z.string().nullish(),
-  })
-  .transform((body, ctx) => {
-    const sessionId = body.sessionId ?? body.session_id;
-    if (!sessionId) {
-      ctx.addIssue({ code: 'custom', message: 'sessionId is required' });
-      return z.NEVER;
-    }
-    return {
-      sessionId,
-      diagramId: body.diagramId,
-      rating: body.rating === 'thumbs_up' ? 'up' : body.rating === 'thumbs_down' ? 'down' : body.rating,
-      comments: body.comments ?? null,
-    };
-  });
-
-/**
- * The ratings already given in a session.
- *
- * Without this a reload silently forgets what the user rated, and they are
- * invited to rate the same diagram twice — which the unique index would then
- * quietly overwrite rather than reject.
- */
-export async function listFeedback(req: Request, res: Response): Promise<void> {
-  const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : null;
-  if (!sessionId) throw badRequest('sessionId is required');
-
-  const feedback = await Feedback.find({ sessionId }).sort({ updatedAt: -1 });
-
-  res.status(200).json({
-    success: true,
-    sessionId,
-    total: feedback.length,
-    feedback: feedback.map((entry) => ({
-      feedbackId: String(entry._id),
-      diagramId: String(entry.diagramId),
-      diagramType: entry.diagramType,
-      version: entry.version,
-      rating: entry.rating,
-      reward: entry.reward,
-      comments: entry.comments,
-      at: entry.updatedAt,
-    })),
-  });
-}
-
-/**
- * Records a rating against one diagram.
- *
- * The diagram is looked up rather than trusted, so a rating always points at a
- * real render and carries the version and type needed to join it to the
- * trajectories that produced it.
- *
- * Re-rating the same diagram replaces the previous rating instead of appending
- * a contradictory second one.
- */
-export async function submitFeedback(req: Request, res: Response): Promise<void> {
-  const result = FeedbackBody.safeParse(req.body ?? {});
-  if (!result.success) {
-    throw badRequest('Invalid feedback body', result.error.issues.map((i) => i.message));
-  }
-  const body = result.data;
-
-  const diagram = await Diagram.findById(body.diagramId).catch(() => null);
-  if (!diagram || diagram.sessionId !== body.sessionId) {
-    throw notFound(`No diagram ${body.diagramId} in session ${body.sessionId}`);
-  }
-
-  const feedback = await Feedback.findOneAndUpdate(
-    { sessionId: body.sessionId, diagramId: diagram._id },
-    {
-      $set: {
-        version: diagram.version,
-        diagramType: diagram.type,
-        rating: body.rating,
-        reward: body.rating === 'up' ? 1.0 : -1.0,
-        comments: body.comments,
-      },
-    },
-    { upsert: true, returnDocument: 'after' },
-  );
-
-  res.status(200).json({
-    success: true,
-    feedbackId: String(feedback._id),
-    sessionId: body.sessionId,
-    diagramType: diagram.type,
-    version: diagram.version,
-    reward: feedback.reward,
-  });
+interface SignalSummary {
+  signal: string;
+  reward: number;
+  confidence: number;
+  evidence: unknown;
 }
 
 /**
  * The RL training set, as JSONL.
  *
- * One line per LLM call that has a rating attached, in the shape an ART/GRPO
- * trainer consumes: the exact messages sent, the exact completion returned, and
- * a scalar reward. Streamed rather than assembled in memory — this collection
- * only grows.
+ * One line per LLM call that has a signal attached, in the shape an ART/GRPO
+ * trainer consumes: the exact messages sent, the exact completion returned,
+ * and a scalar reward. Streamed rather than assembled in memory — this
+ * collection only grows.
  *
- * A turn's reward is the mean of the ratings given to the diagrams it produced,
- * because the calls that build the canonical model are shared by every diagram
- * in the turn: one thumbs-down out of five diagrams is weak evidence against
- * the model, not a verdict on it. A call tagged with a specific diagram type is
- * scored by that diagram's own rating alone.
+ * Every `Feedback` row here was written automatically by the pipeline — see
+ * `server/src/agent/implicitSignals.ts` — never submitted by a user. A
+ * diagram can carry more than one signal (e.g. it rendered cleanly *and* later
+ * got reworked by a revision), so they are combined per diagram before being
+ * applied to a turn's reward, not averaged as separate ratings.
+ *
+ * A turn's reward is the mean of its diagrams' combined rewards, because the
+ * calls that build the canonical model are shared by every diagram in the
+ * turn: one negative diagram out of five is weak evidence against the model,
+ * not a verdict on it. A call tagged with a specific diagram type is scored by
+ * that diagram's own combined reward alone.
  */
 export async function exportFeedback(req: Request, res: Response): Promise<void> {
   const sessionId = typeof req.query.sessionId === 'string' ? req.query.sessionId : null;
@@ -128,24 +39,31 @@ export async function exportFeedback(req: Request, res: Response): Promise<void>
     return;
   }
 
-  // (sessionId, version) -> rewards, and (sessionId, version, type) -> reward
-  const turnRewards = new Map<string, number[]>();
-  const diagramRewards = new Map<string, number>();
+  // (sessionId, version, type) -> every signal recorded for that diagram
+  const diagramSignals = new Map<string, SignalSummary[]>();
   for (const f of feedback) {
-    const turnKey = `${f.sessionId}::${f.version}`;
-    turnRewards.set(turnKey, [...(turnRewards.get(turnKey) ?? []), f.reward]);
-    diagramRewards.set(`${turnKey}::${f.diagramType}`, f.reward);
+    const key = `${f.sessionId}::${f.version}::${f.diagramType}`;
+    diagramSignals.set(key, [
+      ...(diagramSignals.get(key) ?? []),
+      { signal: f.signal, reward: f.reward, confidence: f.confidence, evidence: f.evidence },
+    ]);
   }
 
-  /** How the turn's mean was arrived at — one up and one down also averages to 0. */
-  const breakdown = (values: number[] | undefined) => {
-    if (!values) return null;
-    return {
-      up: values.filter((v) => v > 0).length,
-      down: values.filter((v) => v < 0).length,
-      rated: values.length,
-    };
-  };
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+  // (sessionId, version, type) -> combined reward, and (sessionId, version) -> combined rewards
+  const diagramRewards = new Map<string, number>();
+  const turnRewards = new Map<string, number[]>();
+  for (const [key, signals] of diagramSignals) {
+    const combined = clamp(
+      signals.reduce((sum, s) => sum + s.reward * s.confidence, 0),
+      -1,
+      1,
+    );
+    diagramRewards.set(key, combined);
+    const turnKey = key.slice(0, key.lastIndexOf('::'));
+    turnRewards.set(turnKey, [...(turnRewards.get(turnKey) ?? []), combined]);
+  }
 
   res.status(200).type('application/x-ndjson');
   res.setHeader('Content-Disposition', 'attachment; filename="rl_training_data.jsonl"');
@@ -160,7 +78,7 @@ export async function exportFeedback(req: Request, res: Response): Promise<void>
       ? average(turnRewards.get(turnKey))
       : diagramRewards.get(`${turnKey}::${t.diagramType}`);
 
-    if (reward === undefined) continue; // unrated turn — nothing to learn from
+    if (reward === undefined) continue; // no automatic signal yet — nothing to learn from
 
     res.write(
       `${JSON.stringify({
@@ -174,10 +92,17 @@ export async function exportFeedback(req: Request, res: Response): Promise<void>
           diagramType: t.diagramType,
           model: t.model,
           // Shared calls build the model every diagram in the turn is projected
-          // from, so their reward is a mean. Without the breakdown a 0 from one
-          // up and one down is indistinguishable from a 0 meaning "no signal".
+          // from, so their reward is a mean across those diagrams' combined
+          // signals, not a single diagram's verdict.
           rewardBasis: shared ? 'turn-mean' : 'diagram',
-          ratings: shared ? breakdown(turnRewards.get(turnKey)) : null,
+          signals: shared
+            ? null
+            : (diagramSignals.get(`${turnKey}::${t.diagramType}`) ?? []).map((s) => ({
+                signal: s.signal,
+                reward: s.reward,
+                confidence: s.confidence,
+                evidence: s.evidence,
+              })),
           usage: t.usage,
           durationMs: t.durationMs,
           reasoning: t.reasoning,
