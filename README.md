@@ -2,12 +2,13 @@
 
 An intelligent, multi-turn AI-powered software architecture platform that transforms natural language software requirements into verified, high-fidelity **UML 2.x diagrams**.
 
-Built with a **Canonical Software Model (CSM)** approach, deterministic projectors, automated self-healing syntax repair loops, and an **Adaptive Refinement & Training (ART)** reinforcement learning feedback system.
+Built with a **Canonical Software Model (CSM)** approach, deterministic projectors, automated self-healing syntax repair loops, user-scoped workspaces, and an **Adaptive Refinement & Training (ART)** reinforcement learning feedback system.
 
 ---
 
 ## 🌟 Key Highlights
 
+- **👤 User Identification & Scoped Workspaces**: Name-based authentication that dynamically creates unique `userId`s (e.g. `usr_tony`), recognizes returning users, and isolates architecture sessions per user.
 - **🧠 Canonical Software Model (CSM)**: Extracts a unified, structured architecture model from user prompts to ensure consistent domain concepts across every diagram type.
 - **📐 Complete UML 2.x Support**: Out-of-the-box support for all 14 standard UML 2.x structure and behavior diagram types.
 - **⚡ Deterministic Projectors & Low Latency**: Translates structured CSM data into valid PlantUML using type-safe deterministic TypeScript projectors, minimizing hallucinations and latency.
@@ -15,7 +16,7 @@ Built with a **Canonical Software Model (CSM)** approach, deterministic projecto
 - **🔄 Multi-Turn Iterative Refinement**: Supports conversational updates, incremental prompt edits, and instant diagram view-switching without re-computing unchanged architecture state.
 - **🎯 ART & Reinforcement Learning (RL) Dataset Exporter**: Records full execution trajectories (prompts, completions, tool calls, reasoning steps, latencies) and exports feedback as JSONL for RLHF / DPO / GRPO fine-tuning.
 - **📡 Real-Time SSE Pipeline Streaming**: Live status events streamed to the UI as extraction, projection, validation, and rendering steps execute.
-- **🎨 Interactive Canvas & Studio UI**: Modern React frontend with pan, zoom, full-screen mode, PlantUML code preview, instant copy, and PNG/SVG export capabilities.
+- **🎨 Interactive Canvas & Studio UI**: Modern React frontend with user switcher, pan, zoom, full-screen mode, PlantUML code preview, instant copy, and PNG/SVG export capabilities.
 
 ---
 
@@ -40,16 +41,62 @@ Built with a **Canonical Software Model (CSM)** approach, deterministic projecto
 
 ---
 
+## 🔄 User Lifecycle & Core Workflows
+
+The platform handles three core usage scenarios:
+
+```mermaid
+flowchart TD
+    Start(["User Enters Name (e.g. Tony)"]) --> Identify{"Name in DB?"}
+    
+    Identify -->|No - New User| CreateUser["Create Profile (usr_tony)<br/>isNewUser = true"]
+    Identify -->|Yes - Existing User| LoadUser["Load Existing Profile<br/>isNewUser = false"]
+    
+    CreateUser --> FreshWorkspace["1. New User Scenario:<br/>Start fresh session, extract CSM from scratch,<br/>generate initial diagrams"]
+    
+    LoadUser --> FetchSessions["Fetch Tony's Sessions<br/>(GET /api/sessions?userId=usr_tony)"]
+    FetchSessions --> ExistingWorkspace["2. Existing User Scenario:<br/>Auto-load latest session or revise existing CSM via diff patch"]
+    
+    FreshWorkspace --> UserFeedback
+    ExistingWorkspace --> UserFeedback
+    
+    UserFeedback["3. Feedback Scenario:<br/>User rates diagrams (👍 / 👎 + comments)"]
+    UserFeedback --> LogTrajectory["Persist feedback mapped to session & version"]
+    LogTrajectory --> ExportRL["Export JSONL Trajectory for ART / RLHF fine-tuning"]
+```
+
+1. **New User (`isNewUser: true`)**:
+   - User inputs their name upon arrival.
+   - A unique identifier (e.g., `usr_tony`) is minted and persisted in MongoDB.
+   - The session generates a fresh Canonical Software Model (CSM) from scratch.
+2. **Existing User (`isNewUser: false`)**:
+   - Returning user names are automatically matched (case-insensitively).
+   - Past architecture sessions and rendered diagrams are loaded in the sidebar.
+   - Subsequent prompts compute incremental **CSM Patches / Diffs**, reusing unchanged diagram slices.
+3. **Feedback & Continuous Improvement**:
+   - Users rate diagrams with thumbs up/down and optional comments.
+   - Ratings are tied to exact LLM trajectories and exported for RL / ART model training.
+
+---
+
 ## 🏗️ System Architecture
 
 ```mermaid
 flowchart TD
-    User(["User / Client UI"]) -->|1. Prompt + Diagram Types| API["Express API / SSE Stream"]
+    User(["Client UI"]) -->|1. Identify User| UserAPI["/api/users/identify"]
+    UserAPI --> UserDB[("MongoDB Users")]
+    
+    User -->|2. Prompt + Diagram Types + userId| API["Express API / SSE Stream"]
     API --> Pipeline["Agentic Pipeline"]
     
     subgraph Agentic Pipeline
-        Pipeline --> CSM["CSM Extraction Node"]
+        Pipeline --> ModeCheck{"Existing Session?"}
+        ModeCheck -->|No| CSM["CSM Extraction Node"]
+        ModeCheck -->|Yes| CSMPatch["CSM Revision Patch Node"]
+        
         CSM -->|"Groq LLM (Structured Output)"| CSM_Model[("Canonical Software Model")]
+        CSMPatch -->|"Incremental Diff"| CSM_Model
+        
         CSM_Model --> Integrity["CSM Integrity Validator"]
         Integrity --> Projectors["Deterministic UML Projectors"]
         Projectors --> PlantUML_Code["PlantUML Code Generation"]
@@ -59,11 +106,11 @@ flowchart TD
         Compiler -->|Success| DiagramAssets["Rendered SVG / PNG Images"]
     end
 
-    DiagramAssets --> DB[("MongoDB Atlas")]
+    DiagramAssets --> DB[("MongoDB Atlas (Thread, Diagram, CSM)")]
     DiagramAssets --> User
     
-    User -->|"2. User Feedback / Rating"| FeedbackController["Feedback Service"]
-    FeedbackController --> TrajectoryStore[("Trajectory & RL Store")]
+    User -->|"3. User Feedback / Rating"| FeedbackController["Feedback Service"]
+    FeedbackController --> TrajectoryStore[("Trajectory & Feedback Store")]
     TrajectoryStore --> ExportRL["Feedback Dataset Export (JSONL)"]
     ExportRL --> ART["LangChain ART / RLHF / DPO Trainer"]
 ```
@@ -73,14 +120,14 @@ flowchart TD
 ## 💻 Tech Stack
 
 ### Frontend (`/client`)
-- **Framework**: React 19 + TypeScript + Vite
-- **Icons**: Lucide React
-- **Styling**: Modern responsive CSS design system with dark mode accents
-- **Features**: Interactive zoom/pan canvas, real-time SSE progress indicators, PlantUML code modal, export utilities, feedback collection
+- **Framework**: React 19 + TypeScript + Vite + TailwindCSS
+- **Icons**: Phosphor Icons
+- **State & Hooks**: `useUser`, `useSessions`, `useChat`, `useFeedback`, `useHealth`, `useDiagramTypes`
+- **Features**: User identification modal, user switcher, interactive zoom/pan canvas, real-time SSE progress trail, PlantUML code preview, export utilities, feedback ratings
 
 ### Backend (`/server`)
 - **Runtime**: Node.js (ES Modules) + Express 5 + TypeScript
-- **Database**: MongoDB with Mongoose (Sessions, Diagrams, Trajectories, Feedback)
+- **Database**: MongoDB with Mongoose (`User`, `Thread`, `Diagram`, `CsmVersion`, `Trajectory`, `Feedback`)
 - **LLM Integration**: Groq SDK (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`) with JSON schema constrained decoding
 - **Concurrency & Resilience**: `p-limit`, `p-retry`
 - **UML Engine**: Dual backend support:
@@ -96,22 +143,24 @@ flowchart TD
 umlgenerator/
 ├── client/                     # Frontend Application
 │   ├── src/
-│   │   ├── App.tsx             # Main UML Studio Application & Canvas
-│   │   ├── App.css             # Studio UI Styles & Animations
+│   │   ├── components/         # UI Components (UserModal, SessionSidebar, Composer, DiagramView, etc.)
+│   │   ├── hooks/              # Custom React Hooks (useUser, useSessions, useChat, useFeedback, etc.)
 │   │   ├── services/           # API and SSE client services
-│   │   └── types/              # Frontend TypeScript contracts
+│   │   ├── types/              # Frontend TypeScript contracts
+│   │   ├── App.tsx             # Main UML Studio Application & Canvas
+│   │   └── main.tsx            # Entry point
 │   ├── package.json
 │   └── vite.config.ts
 ├── server/                     # Backend Application
 │   ├── src/
 │   │   ├── agent/              # Agentic pipeline, LLM nodes, CSM integrity & schemas
 │   │   ├── config/             # Database and environment configurations
-│   │   ├── controllers/        # Diagram, session, image, and feedback controllers
-│   │   ├── models/             # Mongoose schemas (Diagram, Session, Trajectory, Feedback)
+│   │   ├── controllers/        # User, diagram, session, image, and feedback controllers
+│   │   ├── models/             # Mongoose schemas (User, Thread, Diagram, CsmVersion, Trajectory, Feedback)
 │   │   ├── plantuml/           # PlantUML rendering engine & JAR/Server abstractions
 │   │   ├── projectors/         # 14 Deterministic CSM -> PlantUML Projectors
-│   │   ├── routes/             # REST endpoints for diagrams, sessions, and feedback
-│   │   ├── sse/                # Server-Sent Events broadcasting
+│   │   ├── routes/             # REST endpoints for users, diagrams, sessions, and feedback
+│   │   ├── lib/                # HTTP error & SSE stream utilities
 │   │   ├── app.ts              # Express application factory
 │   │   └── server.ts           # Server bootstrap
 │   ├── scripts/
@@ -218,23 +267,30 @@ npm run test:watch
 
 ## 📡 API Reference
 
+### User Management
+- `POST /api/users/identify` — Identifies or registers a user by name (`{ name }`). Returns `{ isNewUser, user }`.
+- `GET /api/users` — Returns a list of known users in the system.
+- `GET /api/users/:userId` — Retrieves user profile details.
+
 ### Health Check
 - `GET /api/health` — Checks status of MongoDB, PlantUML engine, and Groq configuration.
 
 ### Diagrams & Generation
 - `GET /api/diagram-types` — Returns metadata for all 14 supported UML diagram types.
-- `POST /api/diagrams/generate/:sessionId` — Initiates multi-diagram generation pipeline with SSE stream output.
+- `POST /api/diagrams/generate/:sessionId` — Initiates multi-diagram generation pipeline with SSE stream output (`{ prompt, diagram_types, userId }`).
 - `POST /api/diagrams/switch-view/:sessionId` — Instantly projects and renders an alternate diagram type from the existing CSM.
-- `GET /api/diagrams/:sessionId` — Retrieves all generated diagrams for a given session.
+- `GET /api/diagrams/:sessionId?version=N` — Retrieves rendered diagrams for a session (optionally at version N).
 - `GET /api/diagram/:session/:filename` — Serves rendered SVG / PNG diagram assets.
 
 ### Sessions
-- `GET /api/sessions/:sessionId` — Fetches session details and generation history.
+- `GET /api/sessions?userId=...` — Returns active sessions filtered by user (`userId` via query param or `x-user-id` header).
+- `GET /api/sessions/:sessionId` — Fetches session details and complete turn history.
 - `GET /api/sessions/:sessionId/model` — Returns the current Canonical Software Model (CSM) JSON.
 - `DELETE /api/sessions/:sessionId` — Deletes session and associated diagrams.
 
 ### Feedback & Reinforcement Learning (RL)
 - `POST /api/feedback` — Submits rating (`thumbs_up` / `thumbs_down`) and optional corrective comments.
+- `GET /api/feedback?sessionId=...` — Returns ratings given in a session.
 - `GET /api/feedback/export` — Streams JSONL dataset with full trajectories and scalar rewards for LangChain ART / GRPO fine-tuning.
 
 ---
